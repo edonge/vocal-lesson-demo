@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply h-full bg-ink-50 text-ink-950 antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply font-sans;
+  }
+  button {
+    @apply cursor-pointer;
+  }
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  /* 모바일 앱처럼 보이는 화면 컨테이너 */
+  .app-shell {
+    @apply mx-auto flex min-h-dvh w-full max-w-phone flex-col bg-white shadow-card;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .range-thumb::-webkit-slider-runnable-track {
+    @apply h-1.5 appearance-none bg-transparent;
+  }
+  .range-thumb::-webkit-slider-thumb {
+    @apply pointer-events-auto h-6 w-6 appearance-none rounded-full border-[3px] border-white bg-[#035ef3] shadow-[0_2px_8px_rgba(3,94,243,0.45)];
+    margin-top: -9px;
+  }
+  .range-thumb::-moz-range-track {
+    @apply h-1.5 bg-transparent;
+  }
+  .range-thumb::-moz-range-thumb {
+    @apply pointer-events-auto h-6 w-6 rounded-full border-[3px] border-white bg-[#035ef3] shadow-[0_2px_8px_rgba(3,94,243,0.45)];
+  }
+}

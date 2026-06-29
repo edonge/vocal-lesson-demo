@@ -1,0 +1,501 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  student
+  trainer
+  admin
+
+  @@map("user_role")
+}
+
+enum Gender {
+  male
+  female
+  none
+
+  @@map("gender")
+}
+
+enum SkillLevel {
+  beginner
+  basic
+  intermediate
+  advanced
+
+  @@map("skill_level")
+}
+
+enum PriceVisibility {
+  public
+  consult
+
+  @@map("price_visibility")
+}
+
+enum ChatRoomStatus {
+  new
+  active
+  trial_proposed
+  reservation_pending
+  reserved
+  closed
+  left
+
+  @@map("chat_room_status")
+}
+
+enum MessageSenderRole {
+  student
+  trainer
+  system
+
+  @@map("message_sender_role")
+}
+
+enum MediaType {
+  photo
+  video
+  audio
+  link
+
+  @@map("media_type")
+}
+
+enum BannerStatus {
+  draft
+  published
+  hidden
+
+  @@map("banner_status")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  role              UserRole  @default(student)
+  loginId           String?   @unique @map("login_id") @db.VarChar(50)
+  email             String?   @unique @db.VarChar(255)
+  phone             String?   @unique @db.VarChar(30)
+  passwordHash      String?   @map("password_hash")
+  name              String    @db.VarChar(50)
+  status            String    @default("active") @db.VarChar(20)
+  termsAgreedAt     DateTime? @map("terms_agreed_at") @db.Timestamptz(6)
+  privacyAgreedAt   DateTime? @map("privacy_agreed_at") @db.Timestamptz(6)
+  marketingAgreedAt DateTime? @map("marketing_agreed_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  studentProfile StudentProfile?
+  trainerProfile TrainerProfile?
+  bookmarks      Bookmark[]
+  reviewReactions ReviewReaction[]
+  sentMessages   Message[]
+  chatRoomsAsStudent ChatRoom[] @relation("StudentChatRooms")
+  dismissals     UserDailyDismissal[]
+
+  @@map("users")
+}
+
+model StudentProfile {
+  userId                 String      @id @map("user_id")
+  gender                 Gender?
+  birthYear              Int?        @map("birth_year")
+  districtId             String?     @map("district_id")
+  neighborhoodId         String?     @map("neighborhood_id")
+  skillLevel             SkillLevel? @map("skill_level")
+  lessonGoalId           String?     @map("lesson_goal_id")
+  admissionMajor         String?     @map("admission_major") @db.VarChar(50)
+  eventDate              DateTime?   @map("event_date") @db.Date
+  eventSongName          String?     @map("event_song_name") @db.VarChar(150)
+  auditionDirection      String?     @map("audition_direction") @db.VarChar(80)
+  otherLessonDescription String?     @map("other_lesson_description")
+  mainConcern            String?     @map("main_concern") @db.VarChar(120)
+  intro                  String?
+  profileCompletionScore Int         @default(0) @map("profile_completion_score")
+  createdAt              DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  district     District?     @relation(fields: [districtId], references: [id])
+  neighborhood Neighborhood? @relation(fields: [neighborhoodId], references: [id])
+  lessonGoal   LessonGoal?   @relation(fields: [lessonGoalId], references: [id])
+  genres       StudentGenre[]
+
+  @@map("student_profiles")
+}
+
+model Genre {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(60)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainers TrainerGenre[]
+  students StudentGenre[]
+
+  @@map("genres")
+}
+
+model LessonGoal {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(80)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainers TrainerGoal[]
+  students StudentProfile[]
+
+  @@map("lesson_goals")
+}
+
+model Facility {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(80)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainers TrainerFacility[]
+
+  @@map("facilities")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainers TrainerTag[]
+
+  @@map("tags")
+}
+
+model District {
+  id        String   @id @default(cuid())
+  name      String   @unique @db.VarChar(80)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  neighborhoods   Neighborhood[]
+  trainers        TrainerProfile[]
+  studentProfiles StudentProfile[]
+
+  @@map("districts")
+}
+
+model Neighborhood {
+  id         String   @id @default(cuid())
+  districtId String   @map("district_id")
+  name       String   @db.VarChar(80)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  district        District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  trainers        TrainerProfile[]
+  studentProfiles StudentProfile[]
+
+  @@unique([districtId, name])
+  @@map("neighborhoods")
+}
+
+model TrainerProfile {
+  id              String          @id @default(cuid())
+  userId          String?         @unique @map("user_id")
+  displayName     String          @map("display_name") @db.VarChar(50)
+  gender          Gender?
+  avatarUrl       String?         @map("avatar_url")
+  heroImageUrl    String?         @map("hero_image_url")
+  cardImageUrl    String?         @map("card_image_url")
+  locationText    String?         @map("location_text") @db.VarChar(255)
+  address         String?
+  districtId      String?         @map("district_id")
+  neighborhoodId  String?         @map("neighborhood_id")
+  headline        String?
+  intro           String?
+  careerYears     Int             @default(0) @map("career_years")
+  lessonMethod    String?         @map("lesson_method") @db.VarChar(80)
+  lessonMinutes   Int?            @map("lesson_minutes")
+  priceMonthly    Int?            @map("price_monthly")
+  priceSingle     Int?            @map("price_single")
+  priceVisibility PriceVisibility @default(public) @map("price_visibility")
+  hasPracticeRoom Boolean         @default(false) @map("has_practice_room")
+  hasParking      Boolean         @default(false) @map("has_parking")
+  lessonApproach  String?         @map("lesson_approach")
+  extraInfo       String?         @map("extra_info")
+  reviewCount     Int             @default(0) @map("review_count")
+  bookmarkCount   Int             @default(0) @map("bookmark_count")
+  isPublished     Boolean         @default(false) @map("is_published")
+  sortOrder       Int             @default(0) @map("sort_order")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user           User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  district       District?               @relation(fields: [districtId], references: [id])
+  neighborhood   Neighborhood?           @relation(fields: [neighborhoodId], references: [id])
+  genres         TrainerGenre[]
+  goals          TrainerGoal[]
+  tags           TrainerTag[]
+  facilities     TrainerFacility[]
+  recommendedFor TrainerRecommendedFor[]
+  educations     TrainerEducation[]
+  careers        TrainerCareer[]
+  works          TrainerWork[]
+  media          TrainerMedia[]
+  reviews        Review[]
+  bookmarks      Bookmark[]
+  chatRooms      ChatRoom[]
+
+  @@index([isPublished, sortOrder])
+  @@index([priceMonthly])
+  @@index([careerYears])
+  @@map("trainer_profiles")
+}
+
+model StudentGenre {
+  studentId String @map("student_id")
+  genreId   String @map("genre_id")
+
+  student StudentProfile @relation(fields: [studentId], references: [userId], onDelete: Cascade)
+  genre   Genre          @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, genreId])
+  @@map("student_genres")
+}
+
+model TrainerGenre {
+  trainerId String @map("trainer_id")
+  genreId   String @map("genre_id")
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  genre   Genre          @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, genreId])
+  @@map("trainer_genres")
+}
+
+model TrainerGoal {
+  trainerId String @map("trainer_id")
+  goalId    String @map("goal_id")
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  goal    LessonGoal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, goalId])
+  @@map("trainer_goals")
+}
+
+model TrainerTag {
+  trainerId String @map("trainer_id")
+  tagId     String @map("tag_id")
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  tag     Tag            @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, tagId])
+  @@map("trainer_tags")
+}
+
+model TrainerFacility {
+  trainerId  String  @map("trainer_id")
+  facilityId String  @map("facility_id")
+  available  Boolean @default(true)
+
+  trainer  TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  facility Facility       @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@id([trainerId, facilityId])
+  @@map("trainer_facilities")
+}
+
+model TrainerRecommendedFor {
+  id        String   @id @default(cuid())
+  trainerId String   @map("trainer_id")
+  body      String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_recommended_for")
+}
+
+model TrainerEducation {
+  id        String   @id @default(cuid())
+  trainerId String   @map("trainer_id")
+  school    String   @db.VarChar(120)
+  major     String?  @db.VarChar(120)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_educations")
+}
+
+model TrainerCareer {
+  id        String   @id @default(cuid())
+  trainerId String   @map("trainer_id")
+  period    String?  @db.VarChar(80)
+  title     String   @db.VarChar(120)
+  detail    String?
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_careers")
+}
+
+model TrainerWork {
+  id        String    @id @default(cuid())
+  trainerId String    @map("trainer_id")
+  type      MediaType
+  title     String    @db.VarChar(150)
+  subtitle  String?   @db.VarChar(150)
+  url       String?
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_works")
+}
+
+model TrainerMedia {
+  id        String    @id @default(cuid())
+  trainerId String    @map("trainer_id")
+  type      MediaType
+  title     String?   @db.VarChar(100)
+  url       String
+  sortOrder Int       @default(0) @map("sort_order")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("trainer_media")
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  trainerId     String   @map("trainer_id")
+  studentId     String?  @map("student_id")
+  body          String
+  displayName   String?  @map("display_name") @db.VarChar(50)
+  regionLabel   String?  @map("region_label") @db.VarChar(50)
+  likesCount    Int      @default(0) @map("likes_count")
+  dislikesCount Int      @default(0) @map("dislikes_count")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trainer   TrainerProfile  @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  reactions ReviewReaction[]
+
+  @@index([trainerId, createdAt])
+  @@map("reviews")
+}
+
+model ReviewReaction {
+  reviewId  String   @map("review_id")
+  userId    String   @map("user_id")
+  reaction  String   @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, userId])
+  @@map("review_reactions")
+}
+
+model Bookmark {
+  userId    String   @map("user_id")
+  trainerId String   @map("trainer_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@id([userId, trainerId])
+  @@map("bookmarks")
+}
+
+model ChatRoom {
+  id                 String         @id @default(cuid())
+  studentId          String         @map("student_id")
+  trainerId          String         @map("trainer_id")
+  status             ChatRoomStatus @default(new)
+  lastMessage        String?        @map("last_message")
+  lastMessageAt      DateTime?      @map("last_message_at") @db.Timestamptz(6)
+  studentUnreadCount Int            @default(0) @map("student_unread_count")
+  trainerUnreadCount Int            @default(0) @map("trainer_unread_count")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  student User           @relation("StudentChatRooms", fields: [studentId], references: [id], onDelete: Cascade)
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([studentId, trainerId])
+  @@index([studentId, updatedAt])
+  @@map("chat_rooms")
+}
+
+model Message {
+  id           String            @id @default(cuid())
+  roomId       String            @map("room_id")
+  senderUserId String?           @map("sender_user_id")
+  senderRole   MessageSenderRole @map("sender_role")
+  body         String
+  readAt       DateTime?         @map("read_at") @db.Timestamptz(6)
+  createdAt    DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderUser User?    @relation(fields: [senderUserId], references: [id], onDelete: SetNull)
+
+  @@index([roomId, createdAt])
+  @@map("messages")
+}
+
+model Banner {
+  id        String       @id @default(cuid())
+  title     String       @db.VarChar(100)
+  imageUrl  String?      @map("image_url")
+  bgColor   String?      @map("bg_color") @db.VarChar(20)
+  linkUrl   String?      @map("link_url")
+  status    BannerStatus @default(published)
+  sortOrder Int          @default(0) @map("sort_order")
+  startsAt  DateTime?    @map("starts_at") @db.Timestamptz(6)
+  endsAt    DateTime?    @map("ends_at") @db.Timestamptz(6)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, sortOrder])
+  @@map("banners")
+}
+
+model UserDailyDismissal {
+  userId        String   @map("user_id")
+  key           String   @db.VarChar(80)
+  dismissedDate DateTime @map("dismissed_date") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, key, dismissedDate])
+  @@map("user_daily_dismissals")
+}
