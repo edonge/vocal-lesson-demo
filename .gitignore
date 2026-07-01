@@ -1,8 +1,22 @@
 node_modules/
 dist/
 .DS_Store
+.env
+.env.*
+!.env.example
 *.local
 tsconfig.tsbuildinfo
 
 .vercel/
 .vercel
+.gh-config/
+
+# Next.js (app/)
+app/.next/
+app/out/
+app/.vercel/
+app/next-env.d.ts
+app/*.tsbuildinfo
+
+# Nested independent project (own git repo)
+/onboarding/
