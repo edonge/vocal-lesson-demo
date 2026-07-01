@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '../src/lib/auth/password';
 
 const prisma = new PrismaClient();
 const DEV_USER_ID = 'dev-student';
+const DEV_LOGIN_ID = 'devstudent';
+const DEV_PASSWORD = 'password1234';
 
 const trainerImage =
   'https://www.figma.com/api/mcp/asset/5a3eefe1-4408-4be7-8622-866af9258907';
@@ -203,6 +206,7 @@ function neighborhoodId(districtId: string, name: string) {
 }
 
 async function clear() {
+  await prisma.userSession.deleteMany();
   await prisma.message.deleteMany();
   await prisma.chatRoom.deleteMany();
   await prisma.bookmark.deleteMany();
@@ -238,7 +242,8 @@ async function main() {
     data: {
       id: DEV_USER_ID,
       role: 'student',
-      loginId: 'dev_student',
+      loginId: DEV_LOGIN_ID,
+      passwordHash: await hashPassword(DEV_PASSWORD),
       name: '이현동',
       phone: '01000000000',
       studentProfile: {

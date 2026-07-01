@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { jsonUnauthorized } from '@/lib/api/request';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const current = await getCurrentUser();
+  if (!current) return jsonUnauthorized();
   const user = await prisma.user.findUnique({
     where: { id: current.id },
     include: {

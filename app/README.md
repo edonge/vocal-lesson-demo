@@ -96,21 +96,35 @@ npm run db:studio        # Prisma Studio
 curl http://localhost:3000/api/home
 curl "http://localhost:3000/api/trainers?district=성동구&sort=recommended"
 curl http://localhost:3000/api/trainers/trainer-1
-curl http://localhost:3000/api/me
-curl http://localhost:3000/api/chat-rooms
+```
+
+`/api/me`, 채팅, 북마크 쓰기 API는 로그인 세션이 필요하다. seed 계정은 아래와 같다.
+
+- ID: `devstudent`
+- PW: `password1234`
+
+```bash
+curl -X POST -c /tmp/dore-cookie.txt http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"loginId":"devstudent","password":"password1234"}'
+
+curl -b /tmp/dore-cookie.txt http://localhost:3000/api/auth/session
+curl -b /tmp/dore-cookie.txt http://localhost:3000/api/me
+curl -b /tmp/dore-cookie.txt http://localhost:3000/api/chat-rooms
 ```
 
 쓰기 API 예시:
 
 ```bash
-curl -X POST http://localhost:3000/api/trainers/trainer-1/bookmark
-curl -X DELETE http://localhost:3000/api/trainers/trainer-1/bookmark
-curl -X POST http://localhost:3000/api/chat-rooms \
+curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/trainer-1/bookmark
+curl -X DELETE -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/trainer-1/bookmark
+curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/chat-rooms \
   -H "Content-Type: application/json" \
   -d '{"trainerId":"trainer-1","firstMessage":"상담 문의드립니다."}'
+curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/auth/logout
 ```
 
-현재 인증은 실제 로그인 대신 `src/lib/auth/getCurrentUser.ts`의 dev user(`dev-student`)를 사용한다. 실제 세션 인증을 붙일 때는 이 유틸 내부만 교체하는 방향으로 확장한다.
+현재 인증은 ID/PW 로그인 후 `HttpOnly` 세션 쿠키(`dore_session`)를 발급하는 방식이다. `src/lib/auth/getCurrentUser.ts`는 쿠키의 세션 토큰을 해시해 `user_sessions`에서 현재 사용자를 찾는다. 공개 API(`/api/home`, `/api/trainers`, `/api/trainers/[id]`)는 비로그인 접근을 허용하고, 보호 API는 세션이 없으면 401을 반환한다.
 
 ## 디렉토리 구조
 

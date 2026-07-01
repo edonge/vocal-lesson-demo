@@ -20,5 +20,5 @@ export async function GET(
     return jsonError('Trainer not found', 404);
   }
 
-  return NextResponse.json(toTrainerDetail(trainer, user.id));
+  return NextResponse.json(toTrainerDetail(trainer, user?.id));
 }

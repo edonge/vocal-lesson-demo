@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import type { Gender, SkillLevel } from '@prisma/client';
+import type { Gender, Prisma, SkillLevel } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
+import { jsonUnauthorized } from '@/lib/api/request';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -66,60 +67,109 @@ function completionScore(body: StudentProfilePatch) {
   return Math.min(score, 100);
 }
 
+function hasOwn<Key extends keyof StudentProfilePatch>(
+  body: StudentProfilePatch,
+  key: Key
+) {
+  return Object.prototype.hasOwnProperty.call(body, key);
+}
+
+function completionScoreFromProfile(profile: {
+  lessonGoalId: string | null;
+  admissionMajor: string | null;
+  eventDate: Date | null;
+  auditionDirection: string | null;
+  otherLessonDescription: string | null;
+  mainConcern: string | null;
+  intro: string | null;
+  genres: Array<unknown>;
+}) {
+  let score = 25;
+  if (profile.lessonGoalId) score += 20;
+  if (
+    profile.admissionMajor ||
+    profile.eventDate ||
+    profile.auditionDirection ||
+    profile.otherLessonDescription ||
+    profile.genres.length > 0 ||
+    profile.mainConcern
+  ) {
+    score += 25;
+  }
+  if (profile.intro?.trim()) score += 30;
+  return Math.min(score, 100);
+}
+
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const body = (await request.json().catch(() => ({}))) as StudentProfilePatch;
 
   const [district, lessonGoal, genreRows] = await Promise.all([
-    body.district
+    hasOwn(body, 'district') && body.district
       ? prisma.district.findUnique({ where: { name: body.district } })
       : Promise.resolve(null),
-    body.lessonGoal
+    hasOwn(body, 'lessonGoal') && body.lessonGoal
       ? prisma.lessonGoal.findUnique({ where: { name: body.lessonGoal } })
       : Promise.resolve(null),
-    body.genres?.length
+    hasOwn(body, 'genres') && body.genres?.length
       ? prisma.genre.findMany({ where: { name: { in: body.genres } } })
       : Promise.resolve([]),
   ]);
 
   const neighborhood =
-    district && body.neighborhood
+    hasOwn(body, 'neighborhood') && district && body.neighborhood
       ? await prisma.neighborhood.findFirst({
           where: { districtId: district.id, name: body.neighborhood },
         })
       : null;
 
-  if (body.name) {
+  if (hasOwn(body, 'name') && body.name) {
     await prisma.user.update({
       where: { id: user.id },
       data: { name: body.name },
     });
   }
 
-  const profile = await prisma.studentProfile.upsert({
-    where: { userId: user.id },
-    update: {
-      gender: normalizeGender(body.gender),
-      birthYear: body.birthYear ? Number(body.birthYear) : null,
-      districtId: district?.id ?? null,
-      neighborhoodId: neighborhood?.id ?? null,
-      skillLevel: normalizeSkill(body.skillLevel),
-      lessonGoalId: lessonGoal?.id ?? null,
-      admissionMajor: body.admissionMajor ?? null,
-      eventDate: body.eventDate ? new Date(body.eventDate) : null,
-      eventSongName: body.eventSongName ?? null,
-      auditionDirection: body.auditionDirection ?? null,
-      otherLessonDescription: body.otherLessonDescription ?? null,
-      mainConcern: body.mainConcern ?? null,
-      intro: body.intro ?? null,
-      profileCompletionScore: completionScore(body),
-      genres: body.genres
-        ? {
+  const updateData: Prisma.StudentProfileUpdateInput = {
+    ...(hasOwn(body, 'gender') ? { gender: normalizeGender(body.gender) } : {}),
+    ...(hasOwn(body, 'birthYear')
+      ? { birthYear: body.birthYear ? Number(body.birthYear) : null }
+      : {}),
+    ...(hasOwn(body, 'district') ? { district: district ? { connect: { id: district.id } } : { disconnect: true } } : {}),
+    ...(hasOwn(body, 'neighborhood')
+      ? { neighborhood: neighborhood ? { connect: { id: neighborhood.id } } : { disconnect: true } }
+      : {}),
+    ...(hasOwn(body, 'skillLevel') ? { skillLevel: normalizeSkill(body.skillLevel) } : {}),
+    ...(hasOwn(body, 'lessonGoal')
+      ? { lessonGoal: lessonGoal ? { connect: { id: lessonGoal.id } } : { disconnect: true } }
+      : {}),
+    ...(hasOwn(body, 'admissionMajor') ? { admissionMajor: body.admissionMajor ?? null } : {}),
+    ...(hasOwn(body, 'eventDate')
+      ? { eventDate: body.eventDate ? new Date(body.eventDate) : null }
+      : {}),
+    ...(hasOwn(body, 'eventSongName') ? { eventSongName: body.eventSongName ?? null } : {}),
+    ...(hasOwn(body, 'auditionDirection')
+      ? { auditionDirection: body.auditionDirection ?? null }
+      : {}),
+    ...(hasOwn(body, 'otherLessonDescription')
+      ? { otherLessonDescription: body.otherLessonDescription ?? null }
+      : {}),
+    ...(hasOwn(body, 'mainConcern') ? { mainConcern: body.mainConcern ?? null } : {}),
+    ...(hasOwn(body, 'intro') ? { intro: body.intro ?? null } : {}),
+    ...(hasOwn(body, 'genres')
+      ? {
+          genres: {
             deleteMany: {},
             create: genreRows.map((genre) => ({ genreId: genre.id })),
-          }
-        : undefined,
-    },
+          },
+        }
+      : {}),
+  };
+
+  const profile = await prisma.studentProfile.upsert({
+    where: { userId: user.id },
+    update: updateData,
     create: {
       userId: user.id,
       gender: normalizeGender(body.gender),
@@ -148,25 +198,40 @@ export async function PATCH(request: Request) {
     },
   });
 
+  const nextScore = completionScoreFromProfile(profile);
+  const savedProfile =
+    profile.profileCompletionScore === nextScore
+      ? profile
+      : await prisma.studentProfile.update({
+          where: { userId: user.id },
+          data: { profileCompletionScore: nextScore },
+          include: {
+            district: true,
+            neighborhood: true,
+            lessonGoal: true,
+            genres: { include: { genre: true } },
+          },
+        });
+
   return NextResponse.json({
     studentProfile: {
-      gender: profile.gender,
-      birthYear: profile.birthYear,
+      gender: savedProfile.gender,
+      birthYear: savedProfile.birthYear,
       region: {
-        district: profile.district?.name ?? null,
-        neighborhood: profile.neighborhood?.name ?? null,
+        district: savedProfile.district?.name ?? null,
+        neighborhood: savedProfile.neighborhood?.name ?? null,
       },
-      skillLevel: profile.skillLevel,
-      lessonGoal: profile.lessonGoal?.name ?? null,
-      genres: profile.genres.map((item) => item.genre.name),
-      admissionMajor: profile.admissionMajor,
-      eventDate: profile.eventDate?.toISOString().slice(0, 10) ?? null,
-      eventSongName: profile.eventSongName,
-      auditionDirection: profile.auditionDirection,
-      otherLessonDescription: profile.otherLessonDescription,
-      mainConcern: profile.mainConcern,
-      intro: profile.intro,
-      profileCompletionScore: profile.profileCompletionScore,
+      skillLevel: savedProfile.skillLevel,
+      lessonGoal: savedProfile.lessonGoal?.name ?? null,
+      genres: savedProfile.genres.map((item) => item.genre.name),
+      admissionMajor: savedProfile.admissionMajor,
+      eventDate: savedProfile.eventDate?.toISOString().slice(0, 10) ?? null,
+      eventSongName: savedProfile.eventSongName,
+      auditionDirection: savedProfile.auditionDirection,
+      otherLessonDescription: savedProfile.otherLessonDescription,
+      mainConcern: savedProfile.mainConcern,
+      intro: savedProfile.intro,
+      profileCompletionScore: savedProfile.profileCompletionScore,
     },
   });
 }

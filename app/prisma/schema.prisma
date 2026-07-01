@@ -98,8 +98,24 @@ model User {
   sentMessages   Message[]
   chatRoomsAsStudent ChatRoom[] @relation("StudentChatRooms")
   dismissals     UserDailyDismissal[]
+  sessions       UserSession[]
 
   @@map("users")
+}
+
+model UserSession {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  sessionTokenHash String   @unique @map("session_token_hash")
+  expiresAt        DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("user_sessions")
 }
 
 model StudentProfile {

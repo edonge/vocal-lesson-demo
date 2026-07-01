@@ -17,6 +17,8 @@ import { DORE_PICK_TRAINERS } from '@/data/home';
 import { useMounted } from '@/hooks/use-mounted';
 import { fetchHome } from '@/lib/api/home-client';
 import { apiTrainerPreviewToUi } from '@/lib/adapters/trainer';
+import { deriveMeDisplay } from '@/lib/adapters/me';
+import { useMe } from '@/hooks/use-me';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 import type { ApiBanner, ApiHomeResponse } from '@/types/api';
 
@@ -47,6 +49,8 @@ export default function HomePage() {
   const router = useRouter();
   const mounted = useMounted();
   const student = useOnboardingStore((state) => state.student);
+  const { me } = useMe();
+  const meDisplay = deriveMeDisplay(me);
   const [unavailableOpen, setUnavailableOpen] = useState(false);
   const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
   const [home, setHome] = useState<ApiHomeResponse | null>(null);
@@ -89,19 +93,29 @@ export default function HomePage() {
     [home]
   );
 
-  // 추천 헤더 안내 문구에 쓰는 지역. API 응답에 학생 지역 정보가 별도로 없어서
-  // 기존처럼 로컬 store 의 student.regions 를 사용.
-  const userDistrict = student.regions[1] || student.regions[0] || '성동구';
+  // 안내 문구의 지역. SoT 우선순위: /api/me 의 student.district → store 의 regions → 기본값
+  const userDistrict =
+    meDisplay.district ||
+    student.regions[1] ||
+    student.regions[0] ||
+    '성동구';
 
   const needsProfileCompletion = useMemo(() => {
+    // 1) 서버가 가장 정확. /api/me 로 직접 판단.
+    if (me) {
+      const sp = me.studentProfile;
+      return !sp || !sp.region.district || !sp.lessonGoal || !sp.birthYear;
+    }
+    // 2) 서버 응답 전 fallback: home API 의 profilePrompt
     if (home?.profilePrompt) return home.profilePrompt.show;
+    // 3) 그래도 없으면 store 기반 추정
     if (!mounted) return false;
     return (
       student.regions.length === 0 ||
       student.goals.length === 0 ||
       !student.birthYear
     );
-  }, [home, mounted, student.birthYear, student.goals.length, student.regions.length]);
+  }, [me, home, mounted, student.birthYear, student.goals.length, student.regions.length]);
 
   const showProfilePrompt = needsProfileCompletion && !profilePromptDismissed;
 

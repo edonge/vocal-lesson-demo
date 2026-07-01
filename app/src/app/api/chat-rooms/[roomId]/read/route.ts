@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { jsonError } from '@/lib/api/request';
+import { jsonError, jsonUnauthorized } from '@/lib/api/request';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +10,7 @@ export async function PATCH(
   { params }: { params: { roomId: string } }
 ) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const room = await prisma.chatRoom.findFirst({
     where: { id: params.roomId, studentId: user.id },
     select: { id: true },

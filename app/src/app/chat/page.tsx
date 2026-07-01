@@ -1,27 +1,54 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Settings } from 'lucide-react';
 import { BottomTabBar } from '@/components/home/home-components';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
 import { chatPreviews, type ChatPreview } from '@/data/chat';
+import { fetchChatRooms } from '@/lib/api/chat-client';
+import { apiChatRoomPreviewToUi } from '@/lib/adapters/chat';
+import { useRequireAuth } from '@/hooks/use-require-auth';
 import { cn } from '@/lib/cn';
 
 type ChatFilter = 'all' | 'unread';
 
 export default function ChatPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useRequireAuth();
   const [filter, setFilter] = useState<ChatFilter>('all');
   const [unavailableOpen, setUnavailableOpen] = useState(false);
+  const [items, setItems] = useState<ChatPreview[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const chats = useMemo(
-    () =>
-      filter === 'unread'
-        ? chatPreviews.filter((chat) => chat.unreadCount > 0)
-        : chatPreviews,
-    [filter]
-  );
+  useEffect(() => {
+    if (authLoading || !user) return;
+    const controller = new AbortController();
+    setIsLoading(true);
+    fetchChatRooms(filter, controller.signal)
+      .then((res) => {
+        setItems(res.items.map(apiChatRoomPreviewToUi));
+        setError(null);
+      })
+      .catch((err: unknown) => {
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : 'unknown error');
+        // 임시 fallback: 화면이 완전히 비지 않게 mock 노출
+        setItems(
+          filter === 'unread'
+            ? chatPreviews.filter((c) => c.unreadCount > 0)
+            : chatPreviews
+        );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false);
+      });
+    return () => controller.abort();
+  }, [authLoading, user, filter]);
+
+  const chats = useMemo(() => items ?? [], [items]);
+  const isEmpty = !isLoading && chats.length === 0;
 
   return (
     <>
@@ -33,15 +60,27 @@ export default function ChatPage() {
             <FilterTabs value={filter} onChange={setFilter} />
           </div>
 
-          <div className="flex flex-col gap-5">
-            {chats.map((chat) => (
-              <ChatListItem
-                key={chat.id}
-                chat={chat}
-                onClick={() => router.push(`/chat/${chat.id}`)}
-              />
-            ))}
-          </div>
+          {isLoading && !items ? (
+            <ChatListSkeleton />
+          ) : isEmpty ? (
+            <EmptyState filter={filter} hasError={Boolean(error)} />
+          ) : (
+            <div className="flex flex-col gap-5">
+              {chats.map((chat) => (
+                <ChatListItem
+                  key={chat.id}
+                  chat={chat}
+                  onClick={() => router.push(`/chat/${chat.id}`)}
+                />
+              ))}
+            </div>
+          )}
+
+          {error && chats.length > 0 ? (
+            <p className="px-5 pt-3 text-center text-[11px] text-gray-400">
+              최신 목록을 불러오지 못해 임시 데이터를 표시 중이에요.
+            </p>
+          ) : null}
         </section>
 
         <BottomTabBar
@@ -73,6 +112,53 @@ function ChatHeader({ onUnavailable }: { onUnavailable: () => void }) {
         <Settings size={30} strokeWidth={2.5} />
       </button>
     </header>
+  );
+}
+
+function ChatListSkeleton() {
+  return (
+    <div className="flex flex-col gap-5">
+      {Array.from({ length: 3 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex h-[66px] w-full items-start gap-4 bg-white px-[15px] py-2.5"
+        >
+          <span className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-gray-200" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <span className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+            <span className="h-3 w-full animate-pulse rounded bg-gray-100" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({
+  filter,
+  hasError,
+}: {
+  filter: ChatFilter;
+  hasError: boolean;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center px-5 pb-20 text-center text-sm leading-tight text-[#a6a6a6]">
+      {hasError ? (
+        <p>
+          상담 목록을 불러오지 못했어요.
+          <br />
+          잠시 후 다시 시도해주세요.
+        </p>
+      ) : filter === 'unread' ? (
+        <p>안 읽은 상담이 없어요.</p>
+      ) : (
+        <p>
+          아직 시작한 상담이 없어요.
+          <br />
+          마음에 드는 트레이너에게 상담을 시작해보세요.
+        </p>
+      )}
+    </div>
   );
 }
 

@@ -31,6 +31,8 @@ export type TrainerPreview = {
   reviews: number;
   price: string;
   image: string;
+  /** API 응답일 때만 포함. mock fallback 에서는 undefined. */
+  bookmarked?: boolean;
 };
 
 const trainerSeeds: Array<Omit<TrainerPreview, 'id' | 'image'>> = [

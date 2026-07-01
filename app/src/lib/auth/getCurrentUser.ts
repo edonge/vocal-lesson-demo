@@ -1,28 +1,37 @@
 import { prisma } from '@/lib/db';
-
-export const DEV_USER_ID = 'dev-student';
+import { getSessionTokenFromCookie, hashSessionToken } from '@/lib/auth/session';
 
 export async function getCurrentUser() {
-  return prisma.user.upsert({
-    where: { id: DEV_USER_ID },
-    update: {},
-    create: {
-      id: DEV_USER_ID,
-      role: 'student',
-      loginId: 'dev_student',
-      name: '이현동',
-      phone: '01000000000',
-      studentProfile: {
-        create: {
-          gender: 'male',
-          birthYear: 2001,
-          skillLevel: 'beginner',
-          profileCompletionScore: 45,
+  const token = getSessionTokenFromCookie();
+  if (!token) return null;
+
+  const session = await prisma.userSession.findUnique({
+    where: { sessionTokenHash: hashSessionToken(token) },
+    include: {
+      user: {
+        include: {
+          studentProfile: true,
         },
       },
     },
-    include: {
-      studentProfile: true,
-    },
   });
+
+  if (!session) return null;
+  if (session.expiresAt.getTime() <= Date.now()) {
+    await prisma.userSession.delete({ where: { id: session.id } }).catch(() => {});
+    return null;
+  }
+  if (session.user.status !== 'active') return null;
+
+  return session.user;
+}
+
+export async function requireCurrentUser() {
+  const user = await getCurrentUser();
+  if (!user) {
+    const error = new Error('Unauthorized');
+    error.name = 'UnauthorizedError';
+    throw error;
+  }
+  return user;
 }

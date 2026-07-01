@@ -8,10 +8,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const user = await getCurrentUser();
-  const student = await prisma.studentProfile.findUnique({
-    where: { userId: user.id },
-    include: { district: true, lessonGoal: true },
-  });
+  const student = user
+    ? await prisma.studentProfile.findUnique({
+        where: { userId: user.id },
+        include: { district: true, lessonGoal: true },
+      })
+    : null;
 
   const banners = await prisma.banner.findMany({
     where: { status: 'published' },
@@ -39,11 +41,13 @@ export async function GET() {
           take: 10,
         });
 
-  const missing = [
-    !student?.districtId ? '레슨 지역' : null,
-    !student?.lessonGoalId ? '레슨 목표' : null,
-    !student?.birthYear ? '출생연도' : null,
-  ].filter((item): item is string => Boolean(item));
+  const missing = user
+    ? [
+        !student?.districtId ? '레슨 지역' : null,
+        !student?.lessonGoalId ? '레슨 목표' : null,
+        !student?.birthYear ? '출생연도' : null,
+      ].filter((item): item is string => Boolean(item))
+    : [];
 
   const response: ApiHomeResponse = {
     banners: banners.map((banner) => ({
@@ -53,7 +57,7 @@ export async function GET() {
       bgColor: banner.bgColor,
       linkUrl: banner.linkUrl,
     })),
-    dorePick: fallbackPick.map((trainer) => toTrainerPreview(trainer, user.id)),
+    dorePick: fallbackPick.map((trainer) => toTrainerPreview(trainer, user?.id)),
     profilePrompt: {
       show: missing.length > 0,
       missing,

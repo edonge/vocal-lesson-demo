@@ -24,6 +24,7 @@ export function apiTrainerPreviewToUi(t: ApiTrainerPreview): TrainerPreview {
     reviews: t.reviews,
     price: t.price,
     image: t.image,
+    bookmarked: t.bookmarked,
   };
 }
 

@@ -18,3 +18,7 @@ export function numberParam(value: string | null) {
 export function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
+
+export function jsonUnauthorized() {
+  return jsonError('로그인이 필요합니다.', 401);
+}

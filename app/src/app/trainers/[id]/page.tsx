@@ -17,6 +17,8 @@ import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
 import { getTrainerProfile, type TrainerProfileDetail } from '@/data/trainer-profile';
 import { apiTrainerDetailToUi } from '@/lib/adapters/trainer';
 import { fetchTrainer } from '@/lib/api/trainers-client';
+import { toggleBookmark } from '@/lib/api/bookmarks-client';
+import { createChatRoom } from '@/lib/api/chat-client';
 import { cn } from '@/lib/cn';
 
 type ProfileTab = 'info' | 'works' | 'media' | 'reviews';
@@ -43,7 +45,40 @@ export default function TrainerProfilePage() {
   const [reviewReactions, setReviewReactions] = useState<
     Record<string, ReviewReaction | undefined>
   >({});
+  const [consultInFlight, setConsultInFlight] = useState(false);
+  const [consultError, setConsultError] = useState<string | null>(null);
+  const bookmarkInFlight = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleBookmark = async () => {
+    if (!params.id || bookmarkInFlight.current) return;
+    const previous = bookmarked;
+    bookmarkInFlight.current = true;
+    setBookmarked(!previous); // optimistic
+    try {
+      const res = await toggleBookmark(params.id, previous);
+      setBookmarked(res.bookmarked);
+    } catch {
+      setBookmarked(previous); // rollback
+    } finally {
+      bookmarkInFlight.current = false;
+    }
+  };
+
+  const handleStartConsult = async () => {
+    if (!params.id || consultInFlight) return;
+    setConsultInFlight(true);
+    setConsultError(null);
+    try {
+      const { roomId } = await createChatRoom({ trainerId: params.id });
+      router.push(`/chat/${roomId}`);
+    } catch (err: unknown) {
+      setConsultError(
+        err instanceof Error ? err.message : '상담을 시작하지 못했어요. 잠시 후 다시 시도해주세요.'
+      );
+      setConsultInFlight(false);
+    }
+  };
 
   // API 로드. 실패 시 mock fallback 으로 화면이 깨지지 않게 한다.
   useEffect(() => {
@@ -161,7 +196,7 @@ export default function TrainerProfilePage() {
             profile={profile}
             onBack={() => router.back()}
             bookmarked={bookmarked}
-            onBookmark={() => setBookmarked((current) => !current)}
+            onBookmark={() => void handleBookmark()}
           />
 
           <section className="min-h-dvh bg-white pb-[104px]">
@@ -191,10 +226,21 @@ export default function TrainerProfilePage() {
 
         <FixedCta
           visible={showFixedCta}
-          onConsult={() => router.push('/chat/ego-20260623')}
+          onConsult={() => void handleStartConsult()}
+          consultInFlight={consultInFlight}
           bookmarked={bookmarked}
-          onBookmark={() => setBookmarked((current) => !current)}
+          onBookmark={() => void handleBookmark()}
         />
+
+        {consultError ? (
+          <div
+            role="alert"
+            className="fixed bottom-[86px] left-1/2 z-40 -translate-x-1/2 rounded-full bg-black/80 px-4 py-2 text-[12px] text-white"
+            onAnimationEnd={() => setConsultError(null)}
+          >
+            {consultError}
+          </div>
+        ) : null}
       </main>
 
       <UnavailableDialog
@@ -724,11 +770,13 @@ function Divider() {
 function FixedCta({
   visible,
   onConsult,
+  consultInFlight,
   bookmarked,
   onBookmark,
 }: {
   visible: boolean;
   onConsult: () => void;
+  consultInFlight?: boolean;
   bookmarked: boolean;
   onBookmark: () => void;
 }) {
@@ -742,9 +790,13 @@ function FixedCta({
       <button
         type="button"
         onClick={onConsult}
-        className="flex min-w-0 flex-1 items-center justify-center rounded-lg bg-[#035ef3] px-6 py-[11px] text-sm font-bold leading-[19.5px] text-white"
+        disabled={consultInFlight}
+        className={cn(
+          'flex min-w-0 flex-1 items-center justify-center rounded-lg bg-[#035ef3] px-6 py-[11px] text-sm font-bold leading-[19.5px] text-white',
+          consultInFlight && 'opacity-70'
+        )}
       >
-        상담하기
+        {consultInFlight ? '상담방을 만드는 중...' : '상담하기'}
       </button>
       <button
         type="button"

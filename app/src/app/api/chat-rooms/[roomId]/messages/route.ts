@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { jsonError } from '@/lib/api/request';
+import { jsonError, jsonUnauthorized } from '@/lib/api/request';
 import { toChatMessage } from '@/lib/api/chat';
 import { prisma } from '@/lib/db';
 
@@ -11,6 +11,7 @@ export async function POST(
   { params }: { params: { roomId: string } }
 ) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const body = (await request.json().catch(() => null)) as { body?: string } | null;
   const text = body?.body?.trim();
   if (!text) return jsonError('body is required');

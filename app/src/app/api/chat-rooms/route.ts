@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { chatRoomPreviewInclude, toChatRoomPreview } from '@/lib/api/chat';
-import { jsonError } from '@/lib/api/request';
+import { jsonError, jsonUnauthorized } from '@/lib/api/request';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const { searchParams } = new URL(request.url);
   const filter = searchParams.get('filter');
 
@@ -25,6 +26,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const body = (await request.json().catch(() => null)) as {
     trainerId?: string;
     firstMessage?: string;

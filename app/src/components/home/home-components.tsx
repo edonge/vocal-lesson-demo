@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Bookmark,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { HOME_ASSETS, HOME_BANNERS, type TrainerPreview } from '@/data/home';
+import { toggleBookmark } from '@/lib/api/bookmarks-client';
 
 type HomeHeaderProps = {
   onUnavailable: () => void;
@@ -173,7 +174,31 @@ type TrainerCardProps = {
 
 export function TrainerCard({ trainer }: TrainerCardProps) {
   const router = useRouter();
-  const [bookmarked, setBookmarked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(trainer.bookmarked ?? false);
+  const inFlight = useRef(false);
+
+  // 부모가 새 데이터로 trainer 를 갱신하면 카드 상태도 동기화.
+  // 사용자의 in-flight 토글 중에는 덮어쓰지 않는다.
+  useEffect(() => {
+    if (inFlight.current) return;
+    setBookmarked(trainer.bookmarked ?? false);
+  }, [trainer.bookmarked]);
+
+  const handleBookmark = async () => {
+    if (inFlight.current) return;
+    const previous = bookmarked;
+    const next = !previous;
+    inFlight.current = true;
+    setBookmarked(next); // optimistic
+    try {
+      const res = await toggleBookmark(trainer.id, previous);
+      setBookmarked(res.bookmarked);
+    } catch {
+      setBookmarked(previous); // rollback
+    } finally {
+      inFlight.current = false;
+    }
+  };
 
   const openProfile = () => router.push(`/trainers/${trainer.id}`);
 
@@ -211,7 +236,7 @@ export function TrainerCard({ trainer }: TrainerCardProps) {
               aria-label="북마크"
               onClick={(event) => {
                 event.stopPropagation();
-                setBookmarked((current) => !current);
+                void handleBookmark();
               }}
               className="flex h-6 w-6 shrink-0 items-center justify-center text-black"
             >

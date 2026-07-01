@@ -82,6 +82,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     total,
-    items: trainers.map((trainer) => toTrainerPreview(trainer, user.id)),
+    items: trainers.map((trainer) => toTrainerPreview(trainer, user?.id)),
   });
 }

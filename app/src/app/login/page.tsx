@@ -1,13 +1,40 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { EyeOff } from 'lucide-react';
 import { DoreLogo } from '@/components/brand/dore-logo';
+import { login } from '@/lib/api/auth-client';
+import { useSession } from '@/hooks/use-session';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { user, isLoading: sessionLoading } = useSession();
   const [unavailableOpen, setUnavailableOpen] = useState(false);
+  const [loginId, setLoginId] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionLoading && user) router.replace('/home');
+  }, [router, sessionLoading, user]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await login({ loginId, password });
+      router.replace('/home');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '로그인에 실패했어요.');
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <>
@@ -15,15 +42,17 @@ export default function LoginPage() {
         <section className="flex w-full flex-col items-center gap-[41px]">
           <DoreLogo withTagline />
 
-          <form className="flex w-full max-w-[302px] flex-col">
-            <label className="text-base font-medium text-black" htmlFor="email">
-              이메일 주소
+          <form className="flex w-full max-w-[302px] flex-col" onSubmit={handleSubmit}>
+            <label className="text-base font-medium text-black" htmlFor="loginId">
+              아이디
             </label>
             <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="예: dore@dore.kr"
+              id="loginId"
+              name="loginId"
+              type="text"
+              value={loginId}
+              onChange={(event) => setLoginId(event.target.value)}
+              placeholder="예: dore2026"
               className="mt-2 h-8 border-0 border-b border-gray-200 bg-transparent px-0 text-sm text-black outline-none placeholder:text-gray-400 focus:border-blue-500"
             />
 
@@ -35,6 +64,8 @@ export default function LoginPage() {
                 id="password"
                 name="password"
                 type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 className="h-full min-w-0 flex-1 border-0 bg-transparent px-0 text-sm text-black outline-none"
               />
               <button
@@ -46,12 +77,16 @@ export default function LoginPage() {
               </button>
             </div>
 
+            {error ? (
+              <p className="mt-3 text-xs leading-tight text-danger">{error}</p>
+            ) : null}
+
             <button
-              type="button"
-              onClick={() => setUnavailableOpen(true)}
-              className="mt-5 h-[45px] rounded bg-gray-400 text-base font-medium text-white transition hover:bg-gray-600"
+              type="submit"
+              disabled={isSubmitting || !loginId.trim() || !password}
+              className="mt-5 h-[45px] rounded bg-gray-400 text-base font-medium text-white transition hover:bg-gray-600 disabled:opacity-60"
             >
-              로그인
+              {isSubmitting ? '로그인 중…' : '로그인'}
             </button>
           </form>
 

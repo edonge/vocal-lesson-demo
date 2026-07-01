@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
-import { jsonError } from '@/lib/api/request';
+import { jsonError, jsonUnauthorized } from '@/lib/api/request';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +10,7 @@ export async function POST(
   { params }: { params: { trainerId: string } }
 ) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   const trainer = await prisma.trainerProfile.findUnique({
     where: { id: params.trainerId },
     select: { id: true },
@@ -30,6 +31,7 @@ export async function DELETE(
   { params }: { params: { trainerId: string } }
 ) {
   const user = await getCurrentUser();
+  if (!user) return jsonUnauthorized();
   await prisma.bookmark.deleteMany({
     where: { userId: user.id, trainerId: params.trainerId },
   });

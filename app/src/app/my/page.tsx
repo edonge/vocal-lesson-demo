@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
   Check,
@@ -12,7 +12,15 @@ import musicNoteAsset from '../../../assets/music_note.png';
 import { BottomTabBar } from '@/components/home/home-components';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
 import { cn } from '@/lib/cn';
+import { useMe } from '@/hooks/use-me';
+import { useRequireAuth } from '@/hooks/use-require-auth';
 import { useMounted } from '@/hooks/use-mounted';
+import {
+  deriveMeDisplay,
+  meToStudentStorePatch,
+  studentStoreToUpdatePayload,
+} from '@/lib/adapters/me';
+import { updateStudentProfile } from '@/lib/api/me-client';
 import { useOnboardingStore } from '@/stores/onboarding-store';
 
 type SectionKey =
@@ -91,7 +99,62 @@ export default function MyPage() {
   const mounted = useMounted();
   const student = useOnboardingStore((state) => state.student);
   const updateStudent = useOnboardingStore((state) => state.updateStudent);
+  const { user, isLoading: authLoading } = useRequireAuth();
+  const { me } = useMe();
+  const meDisplay = deriveMeDisplay(me);
+  const hydratedRef = useRef(false);
+  const skipNextSaveRef = useRef(false);
+  const saveTimerRef = useRef<number | undefined>(undefined);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'error'>(
+    'idle'
+  );
   const [unavailableOpen, setUnavailableOpen] = useState(false);
+
+  // 1) 서버 응답으로 store 를 한 번 hydrate. 첫 번째 store 변경(=hydrate 자체)은 저장 skip.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (!me || hydratedRef.current) return;
+    hydratedRef.current = true;
+    const patch = meToStudentStorePatch(me);
+    if (Object.keys(patch).length > 0) {
+      skipNextSaveRef.current = true;
+      updateStudent(patch);
+    }
+  }, [authLoading, user, me, updateStudent]);
+
+  // 2) hydrate 이후의 store 변경은 디바운스로 PATCH.
+  useEffect(() => {
+    if (authLoading || !user) return;
+    if (!hydratedRef.current) return;
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      setSaveStatus('saving');
+      updateStudentProfile(studentStoreToUpdatePayload(student))
+        .then((response) => {
+          // 서버가 정규화/계산한 결과로 store 다시 hydrate.
+          const patch = meToStudentStorePatch({
+            id: null,
+            role: null,
+            name: null,
+            phone: null,
+            studentProfile: response.studentProfile,
+          });
+          if (Object.keys(patch).length > 0) {
+            skipNextSaveRef.current = true;
+            updateStudent(patch);
+          }
+          setSaveStatus('idle');
+        })
+        .catch(() => setSaveStatus('error'));
+    }, 800);
+
+    return () => window.clearTimeout(saveTimerRef.current);
+  }, [authLoading, user, student, updateStudent]);
   const [openSections, setOpenSections] = useState<Record<SectionKey, boolean>>({
     goals: true,
     admission: false,
@@ -112,8 +175,10 @@ export default function MyPage() {
       const goal = goals[0] || '취미';
 
     return {
-      name: student.name || '이현동',
-      region: regions[1] || regions[0] || '성동구',
+      // 서버 값 우선. 없으면 store, 그래도 없으면 기존 기본값.
+      name: meDisplay.name || student.name || '이현동',
+      region:
+        meDisplay.district || regions[1] || regions[0] || '성동구',
       primaryGoal: goal,
       goals: goals.length > 0 ? goals : ['취미'],
       genres,
@@ -128,7 +193,7 @@ export default function MyPage() {
       otherLessonDescription: mounted ? student.otherLessonDescription ?? '' : '',
       birthYear: mounted ? student.birthYear : '',
     };
-  }, [mounted, student]);
+  }, [mounted, student, meDisplay.name, meDisplay.district]);
 
   const eventDayOptions = useMemo(() => {
     const year = Number(display.eventYear || currentYear);
@@ -227,6 +292,20 @@ export default function MyPage() {
   return (
     <>
       <main className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-gray-50">
+        {saveStatus !== 'idle' ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className={cn(
+              'fixed left-1/2 top-[14px] z-40 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-medium shadow-sm',
+              saveStatus === 'saving' && 'bg-black/60 text-white',
+              saveStatus === 'error' && 'bg-danger text-white'
+            )}
+          >
+            {saveStatus === 'saving' ? '저장 중…' : '저장에 실패했어요'}
+          </div>
+        ) : null}
+
         <div className="flex flex-1 flex-col gap-[31px] overflow-y-auto pb-[116px] pt-[75px]">
           <ProfileHeader
             name={display.name}

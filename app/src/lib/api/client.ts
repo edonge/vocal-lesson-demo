@@ -39,6 +39,7 @@ export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T>
 
   const res = await fetch(url, {
     ...rest,
+    credentials: rest.credentials ?? 'same-origin',
     headers: {
       Accept: 'application/json',
       ...(isJsonBody ? { 'Content-Type': 'application/json' } : {}),
