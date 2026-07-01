@@ -6,15 +6,15 @@ const DEV_USER_ID = 'dev-student';
 const DEV_LOGIN_ID = 'devstudent';
 const DEV_PASSWORD = 'password1234';
 
-const trainerImage =
+export const trainerImage =
   'https://www.figma.com/api/mcp/asset/5a3eefe1-4408-4be7-8622-866af9258907';
-const heroImage =
+export const heroImage =
   'https://www.figma.com/api/mcp/asset/2be20130-c8c8-49ec-b5a4-8b2e6108ccb9';
 
-const genres = ['발라드', 'R&B', '락/밴드', '팝송', '인디', 'KPOP/아이돌', '뮤지컬'];
-const goals = ['입시', '취미', '축가/행사', '오디션', '녹음/커버'];
-const facilities = ['연습실', '작업실', '레코딩룸', '주차공간'];
-const tags = [
+export const genres = ['발라드', 'R&B', '락/밴드', '팝송', '인디', 'KPOP/아이돌', '뮤지컬'];
+export const goals = ['입시', '취미', '축가/행사', '오디션', '녹음/커버'];
+export const facilities = ['연습실', '작업실', '레코딩룸', '주차공간'];
+export const tags = [
   '취미',
   '입시',
   '오디션',
@@ -30,7 +30,7 @@ const tags = [
   '입문',
 ];
 
-const locationSeed = [
+export const locationSeed = [
   { id: 'district-mapo', name: '마포구', neighborhoods: ['서교동', '합정동', '연남동'] },
   { id: 'district-seongdong', name: '성동구', neighborhoods: ['행당1동', '성수1가1동', '옥수동'] },
   { id: 'district-gangnam', name: '강남구', neighborhoods: ['신사동', '청담동', '역삼1동'] },
@@ -40,7 +40,7 @@ const locationSeed = [
   { id: 'district-gangseo', name: '강서구', neighborhoods: ['화곡1동', '발산1동', '등촌1동'] },
 ];
 
-const trainerSeed = [
+export const trainerSeed = [
   {
     id: 'trainer-1',
     name: 'ego',
@@ -178,7 +178,7 @@ const trainerSeed = [
   },
 ];
 
-function neighborhoodId(districtId: string, name: string) {
+export function neighborhoodId(districtId: string, name: string) {
   const slugMap: Record<string, string> = {
     합정동: 'hapjeong',
     서교동: 'seogyo',
@@ -509,12 +509,14 @@ async function main() {
   });
 }
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (error) => {
-    console.error(error);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+if (require.main === module) {
+  main()
+    .then(async () => {
+      await prisma.$disconnect();
+    })
+    .catch(async (error) => {
+      console.error(error);
+      await prisma.$disconnect();
+      process.exit(1);
+    });
+}

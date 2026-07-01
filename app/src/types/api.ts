@@ -24,6 +24,7 @@ export type ApiTrainerPreview = {
 export type ApiHomeResponse = {
   banners: ApiBanner[];
   dorePick: ApiTrainerPreview[];
+  userDistrict: string | null;
   profilePrompt: {
     show: boolean;
     missing: string[];

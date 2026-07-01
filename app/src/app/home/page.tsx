@@ -13,13 +13,9 @@ import {
   type HeroBannerItem,
 } from '@/components/home/home-components';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { DORE_PICK_TRAINERS } from '@/data/home';
 import { useMounted } from '@/hooks/use-mounted';
 import { fetchHome } from '@/lib/api/home-client';
 import { apiTrainerPreviewToUi } from '@/lib/adapters/trainer';
-import { deriveMeDisplay } from '@/lib/adapters/me';
-import { useMe } from '@/hooks/use-me';
-import { useOnboardingStore } from '@/stores/onboarding-store';
 import type { ApiBanner, ApiHomeResponse } from '@/types/api';
 
 const PROFILE_PROMPT_DISMISS_KEY = 'dore:profile-completion-dismissed-date';
@@ -48,9 +44,6 @@ function adaptBanners(banners: ApiBanner[]): HeroBannerItem[] {
 export default function HomePage() {
   const router = useRouter();
   const mounted = useMounted();
-  const student = useOnboardingStore((state) => state.student);
-  const { me } = useMe();
-  const meDisplay = deriveMeDisplay(me);
   const [unavailableOpen, setUnavailableOpen] = useState(false);
   const [profilePromptDismissed, setProfilePromptDismissed] = useState(false);
   const [home, setHome] = useState<ApiHomeResponse | null>(null);
@@ -82,10 +75,9 @@ export default function HomePage() {
     return () => controller.abort();
   }, []);
 
-  // API 실패 / 로딩 중에는 mock 으로 화면이 비지 않게 fallback
   const trainers = useMemo(() => {
     if (home?.dorePick) return home.dorePick.map(apiTrainerPreviewToUi);
-    return DORE_PICK_TRAINERS;
+    return [];
   }, [home]);
 
   const banners = useMemo(
@@ -93,29 +85,12 @@ export default function HomePage() {
     [home]
   );
 
-  // 안내 문구의 지역. SoT 우선순위: /api/me 의 student.district → store 의 regions → 기본값
-  const userDistrict =
-    meDisplay.district ||
-    student.regions[1] ||
-    student.regions[0] ||
-    '성동구';
+  const userDistrict = home?.userDistrict || '성동구';
 
   const needsProfileCompletion = useMemo(() => {
-    // 1) 서버가 가장 정확. /api/me 로 직접 판단.
-    if (me) {
-      const sp = me.studentProfile;
-      return !sp || !sp.region.district || !sp.lessonGoal || !sp.birthYear;
-    }
-    // 2) 서버 응답 전 fallback: home API 의 profilePrompt
     if (home?.profilePrompt) return home.profilePrompt.show;
-    // 3) 그래도 없으면 store 기반 추정
-    if (!mounted) return false;
-    return (
-      student.regions.length === 0 ||
-      student.goals.length === 0 ||
-      !student.birthYear
-    );
-  }, [me, home, mounted, student.birthYear, student.goals.length, student.regions.length]);
+    return false;
+  }, [home]);
 
   const showProfilePrompt = needsProfileCompletion && !profilePromptDismissed;
 
@@ -148,6 +123,8 @@ export default function HomePage() {
 
             {isLoading && !home ? (
               <HomeLoadingSkeleton />
+            ) : trainers.length === 0 ? (
+              <EmptyHomeState hasError={Boolean(error)} />
             ) : (
               trainers.map((trainer) => (
                 <TrainerCard
@@ -160,7 +137,7 @@ export default function HomePage() {
 
             {error ? (
               <p className="text-center text-xs text-gray-400">
-                추천 데이터를 불러오지 못해 임시 데이터를 표시 중이에요.
+                추천 데이터를 불러오지 못했어요.
               </p>
             ) : null}
           </section>
@@ -198,6 +175,16 @@ function HomeLoadingSkeleton() {
           className="h-[188px] w-full animate-pulse rounded-lg border border-[#b3b1b1] bg-gray-100"
         />
       ))}
+    </div>
+  );
+}
+
+function EmptyHomeState({ hasError }: { hasError: boolean }) {
+  return (
+    <div className="flex h-[188px] items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-6 text-center text-sm font-medium leading-relaxed text-gray-400">
+      {hasError
+        ? '추천 데이터를 불러오지 못했어요. 잠시 후 다시 시도해주세요.'
+        : '아직 추천할 트레이너가 없어요.'}
     </div>
   );
 }

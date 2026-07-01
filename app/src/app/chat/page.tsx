@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Settings } from 'lucide-react';
 import { BottomTabBar } from '@/components/home/home-components';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { chatPreviews, type ChatPreview } from '@/data/chat';
+import { type ChatPreview } from '@/data/chat';
 import { fetchChatRooms } from '@/lib/api/chat-client';
 import { apiChatRoomPreviewToUi } from '@/lib/adapters/chat';
 import { useRequireAuth } from '@/hooks/use-require-auth';
@@ -34,12 +34,7 @@ export default function ChatPage() {
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : 'unknown error');
-        // 임시 fallback: 화면이 완전히 비지 않게 mock 노출
-        setItems(
-          filter === 'unread'
-            ? chatPreviews.filter((c) => c.unreadCount > 0)
-            : chatPreviews
-        );
+        setItems([]);
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsLoading(false);
@@ -78,7 +73,7 @@ export default function ChatPage() {
 
           {error && chats.length > 0 ? (
             <p className="px-5 pt-3 text-center text-[11px] text-gray-400">
-              최신 목록을 불러오지 못해 임시 데이터를 표시 중이에요.
+              최신 목록을 불러오지 못했어요.
             </p>
           ) : null}
         </section>

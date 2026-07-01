@@ -16,8 +16,11 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { HOME_ASSETS, HOME_BANNERS, type TrainerPreview } from '@/data/home';
+import { type TrainerPreview } from '@/data/home';
 import { toggleBookmark } from '@/lib/api/bookmarks-client';
+
+const PROFILE_MODAL_ASSET =
+  'https://www.figma.com/api/mcp/asset/71eaeda5-bd20-4abb-8299-0200507171b9';
 
 type HomeHeaderProps = {
   onUnavailable: () => void;
@@ -58,20 +61,21 @@ type HeroBannerProps = {
   banners?: HeroBannerItem[];
 };
 
-const FALLBACK_HERO_BANNERS: HeroBannerItem[] = HOME_BANNERS.map((banner) => ({
-  id: banner.id,
-  label: banner.label,
-  bgClassName: banner.className,
-}));
-
 export function HeroBanner({ banners }: HeroBannerProps = {}) {
-  const items =
-    banners && banners.length > 0 ? banners : FALLBACK_HERO_BANNERS;
+  const items = banners ?? [];
   const [activeIndex, setActiveIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const count = items.length;
+
+  if (count === 0) {
+    return (
+      <section className="flex h-[250px] w-full items-center justify-center rounded-lg border border-dashed border-gray-200 bg-white px-6 text-center text-sm font-medium leading-relaxed text-gray-400">
+        표시할 배너가 없어요.
+      </section>
+    );
+  }
 
   const getLoopOffset = (index: number) => {
     let offset = index - activeIndex;
@@ -364,7 +368,7 @@ export function ProfileCompletionModal({
         </button>
 
         <img
-          src={HOME_ASSETS.profileModal}
+          src={PROFILE_MODAL_ASSET}
           alt=""
           className="h-[137px] w-[137px] object-cover"
           draggable={false}

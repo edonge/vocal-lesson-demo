@@ -14,7 +14,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { getTrainerProfile, type TrainerProfileDetail } from '@/data/trainer-profile';
+import { type TrainerProfileDetail } from '@/data/trainer-profile';
 import { apiTrainerDetailToUi } from '@/lib/adapters/trainer';
 import { fetchTrainer } from '@/lib/api/trainers-client';
 import { toggleBookmark } from '@/lib/api/bookmarks-client';
@@ -80,10 +80,11 @@ export default function TrainerProfilePage() {
     }
   };
 
-  // API 로드. 실패 시 mock fallback 으로 화면이 깨지지 않게 한다.
   useEffect(() => {
     if (!params.id) return;
     const controller = new AbortController();
+    setProfile(null);
+    setProfileError(null);
     fetchTrainer(params.id, controller.signal)
       .then((data) => {
         setProfile(apiTrainerDetailToUi(data));
@@ -92,7 +93,7 @@ export default function TrainerProfilePage() {
       })
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
-        setProfile(getTrainerProfile(params.id));
+        setProfile(null);
         setProfileError(err instanceof Error ? err.message : 'unknown error');
       });
     return () => controller.abort();
@@ -172,8 +173,23 @@ export default function TrainerProfilePage() {
     return (
       <main className="relative flex h-dvh items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-3 text-sm text-gray-400">
-          <div className="h-9 w-9 animate-spin rounded-full border-2 border-gray-200 border-t-[#035ef3]" />
-          <p>트레이너 정보를 불러오는 중이에요</p>
+          {profileError ? (
+            <>
+              <p>트레이너 정보를 불러오지 못했어요.</p>
+              <button
+                type="button"
+                onClick={() => router.push('/search')}
+                className="h-10 rounded-lg bg-[#035ef3] px-4 text-sm font-semibold text-white"
+              >
+                탐색으로 돌아가기
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="h-9 w-9 animate-spin rounded-full border-2 border-gray-200 border-t-[#035ef3]" />
+              <p>트레이너 정보를 불러오는 중이에요</p>
+            </>
+          )}
         </div>
       </main>
     );
@@ -182,11 +198,6 @@ export default function TrainerProfilePage() {
   return (
     <>
       <main className="relative h-dvh overflow-hidden bg-white">
-        {profileError ? (
-          <div className="absolute left-1/2 top-[20px] z-40 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-[11px] text-white">
-            최신 정보를 불러오지 못해 임시 데이터를 보여드려요
-          </div>
-        ) : null}
         <div
           ref={scrollRef}
           onScroll={handleScroll}

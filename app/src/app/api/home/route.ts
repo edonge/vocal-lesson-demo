@@ -31,7 +31,7 @@ export async function GET() {
     take: 10,
   });
 
-  const fallbackPick =
+  const visiblePick =
     dorePick.length > 0
       ? dorePick
       : await prisma.trainerProfile.findMany({
@@ -57,7 +57,8 @@ export async function GET() {
       bgColor: banner.bgColor,
       linkUrl: banner.linkUrl,
     })),
-    dorePick: fallbackPick.map((trainer) => toTrainerPreview(trainer, user?.id)),
+    dorePick: visiblePick.map((trainer) => toTrainerPreview(trainer, user?.id)),
+    userDistrict: student?.district?.name ?? null,
     profilePrompt: {
       show: missing.length > 0,
       missing,
