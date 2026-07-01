@@ -115,7 +115,7 @@ export const useConsultStore = create<ConsultState>()(
       reset: () => set({ consultations: [] }),
     }),
     {
-      name: 'voccal:consults:v1',
+      name: 'dore:consults:v1',
       version: 1,
     }
   )

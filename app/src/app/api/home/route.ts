@@ -8,18 +8,19 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const user = await getCurrentUser();
-  const student = user
-    ? await prisma.studentProfile.findUnique({
-        where: { userId: user.id },
-        include: { district: true, lessonGoal: true },
-      })
-    : null;
-
-  const banners = await prisma.banner.findMany({
-    where: { status: 'published' },
-    orderBy: { sortOrder: 'asc' },
-    take: 5,
-  });
+  const [student, banners] = await Promise.all([
+    user
+      ? prisma.studentProfile.findUnique({
+          where: { userId: user.id },
+          include: { district: true, lessonGoal: true },
+        })
+      : Promise.resolve(null),
+    prisma.banner.findMany({
+      where: { status: 'published' },
+      orderBy: { sortOrder: 'asc' },
+      take: 5,
+    }),
+  ]);
 
   const dorePick = await prisma.trainerProfile.findMany({
     where: {

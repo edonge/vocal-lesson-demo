@@ -11,7 +11,7 @@ import {
   User,
 } from 'lucide-react';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { type ChatMessage } from '@/data/chat';
+import { type ChatMessage } from '@/types/ui';
 import {
   fetchChatRoom,
   markChatRoomRead,

@@ -99,7 +99,7 @@ export const useOnboardingStore = create<OnboardingState>()(
         set({ role: null, student: initialStudent, teacher: initialTeacher }),
     }),
     {
-      name: 'voccal:onboarding:v1',
+      name: 'dore:onboarding:v1',
       version: 1,
     }
   )

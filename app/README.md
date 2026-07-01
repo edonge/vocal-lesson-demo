@@ -1,6 +1,6 @@
-# Voccal — Web MVP
+# Dore — Web MVP
 
-보컬 레슨 플랫폼의 웹 MVP. Flutter 네이티브 앱 개발 전 시장 검증용으로 웹부터 배포한다.
+실용음악/보컬 레슨 1:1 트레이너 매칭 플랫폼의 웹 MVP.
 
 ## 기술 스택
 
@@ -69,7 +69,7 @@ npm run prisma:generate
 npm run db:migrate
 ```
 
-5. 개발용 seed 데이터를 넣는다.
+5. 기준 데이터를 넣는다.
 
 ```bash
 npm run db:seed
@@ -87,8 +87,8 @@ npm run dev
 npm run prisma:generate  # Prisma Client 생성
 npm run db:migrate       # prisma migrate dev
 npm run db:deploy        # prisma migrate deploy (운영/배포 DB)
-npm run db:seed          # 개발용 seed 입력 (dev 계정/테스트 채팅 포함)
-npm run db:seed:prod     # 운영용 초기 데이터 입력 (dev 계정/테스트 채팅 제외)
+npm run db:seed          # 개발 DB 초기화 + 기준 데이터 입력
+npm run db:seed:prod     # 운영/배포 DB 기준 데이터 입력 + 이전 가짜 seed 정리
 npm run db:studio        # Prisma Studio
 ```
 
@@ -99,18 +99,15 @@ npm run db:studio        # Prisma Studio
 ```bash
 curl http://localhost:3000/api/home
 curl "http://localhost:3000/api/trainers?district=성동구&sort=recommended"
-curl http://localhost:3000/api/trainers/trainer-1
+curl http://localhost:3000/api/trainers
 ```
 
-`/api/me`, 채팅, 북마크 쓰기 API는 로그인 세션이 필요하다. seed 계정은 아래와 같다.
-
-- ID: `devstudent`
-- PW: `password1234`
+`/api/me`, 채팅, 북마크 쓰기 API는 로그인 세션이 필요하다. 개발/운영 seed는 테스트 로그인 계정을 만들지 않으므로, 브라우저 회원가입 플로우로 계정을 만든 뒤 로그인 쿠키를 사용한다.
 
 ```bash
 curl -X POST -c /tmp/dore-cookie.txt http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"loginId":"devstudent","password":"password1234"}'
+  -d '{"loginId":"YOUR_LOGIN_ID","password":"YOUR_PASSWORD"}'
 
 curl -b /tmp/dore-cookie.txt http://localhost:3000/api/auth/session
 curl -b /tmp/dore-cookie.txt http://localhost:3000/api/me
@@ -120,11 +117,11 @@ curl -b /tmp/dore-cookie.txt http://localhost:3000/api/chat-rooms
 쓰기 API 예시:
 
 ```bash
-curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/trainer-1/bookmark
-curl -X DELETE -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/trainer-1/bookmark
+curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/{TRAINER_ID}/bookmark
+curl -X DELETE -b /tmp/dore-cookie.txt http://localhost:3000/api/trainers/{TRAINER_ID}/bookmark
 curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/chat-rooms \
   -H "Content-Type: application/json" \
-  -d '{"trainerId":"trainer-1","firstMessage":"상담 문의드립니다."}'
+  -d '{"trainerId":"{TRAINER_ID}","firstMessage":"상담 문의드립니다."}'
 curl -X POST -b /tmp/dore-cookie.txt http://localhost:3000/api/auth/logout
 ```
 
@@ -150,7 +147,6 @@ src/
 ├─ stores/                 Zustand 스토어 (onboarding, consult)
 ├─ hooks/                  공용 훅 (useMounted 등)
 ├─ lib/                    DB client, dev auth, API formatter, cn 등 유틸
-├─ mocks/                  데모용 mock 데이터
 ├─ types/                  공용 타입 정의
 └─ styles/                 글로벌 추가 스타일이 필요한 경우만
 ```
@@ -159,7 +155,8 @@ src/
 prisma/
 ├─ schema.prisma           PostgreSQL schema
 ├─ migrations/             SQL migration
-└─ seed.ts                 현재 프론트 mock 기반 seed
+├─ seed.ts                 개발 DB 초기화 + 기준 데이터 seed
+└─ seed.production.ts      운영/배포 DB 기준 데이터 seed + 이전 가짜 seed 정리
 ```
 
 라우트 추가는 `src/app/.../page.tsx`만 만들면 자동 매핑된다.
@@ -198,9 +195,10 @@ Vercel Project Settings → **Root Directory** = `app`.
 - Vercel Build Command는 기본적으로 `npm run build`를 사용한다. 현재 build script는 `prisma generate && next build`라서 배포 중 Prisma Client가 생성된다.
 - Vercel build 중 `prisma migrate dev`, `npm run db:seed`, `npm run db:seed:prod`를 실행하지 않는다.
 - 운영 DB migration은 배포 전에 로컬에서 production `DATABASE_URL`을 설정한 뒤 `npm run db:deploy`로 적용한다. MVP 단계에서는 이 방식이 가장 단순하고 실패 지점이 명확하다.
-- 개발용 seed(`npm run db:seed`)는 production DB에 실행하지 않는다.
-- 운영용 seed(`npm run db:seed:prod`)는 production 초기 데이터가 필요할 때만 수동 실행한다.
-- seed의 개발 계정(`devstudent`)은 production에서 그대로 운영 계정처럼 사용하지 않는다. 데모가 필요하면 별도 데모 계정을 명시적으로 관리한다.
+- 개발용 seed(`npm run db:seed`)는 production DB에 실행하지 않는다. 개발 DB를 비우고 기준 데이터만 다시 넣는다.
+- 운영용 seed(`npm run db:seed:prod`)는 production 초기 기준 데이터가 필요할 때만 수동 실행한다.
+- 운영용 seed는 과거 seed로 들어간 가짜 트레이너, 배너, 테스트 계정, 테스트 채팅, 테스트 북마크를 정리한다.
+- 데모 계정이 필요하면 production에서 별도 운영 절차로 생성하고 관리한다.
 
 ### Vercel 환경변수
 
@@ -238,10 +236,13 @@ npm run db:seed
 
 - 장르, 레슨 목적, 시설, 태그 기준 데이터
 - 서울 일부 구/동 데이터
+
+제외 데이터:
+
 - 홈 배너
-- 트레이너 프로필과 상세 소개, 작업물, 미디어
-- 후기 샘플
-- 개발용 계정 `devstudent`
+- 트레이너 프로필
+- 후기
+- 개발용 계정
 - 테스트 채팅방, 테스트 메시지, 테스트 북마크
 
 운영용 seed:
@@ -254,20 +255,20 @@ npm run db:seed:prod
 
 - 장르, 레슨 목적, 시설, 태그 기준 데이터
 - 서울 일부 구/동 데이터
-- 홈 배너
-- 트레이너 프로필과 상세 소개, 작업물, 미디어
-- 후기 샘플
 
 제외 데이터:
 
-- 개발용 계정 `devstudent`
+- 홈 배너
+- 트레이너 프로필
+- 후기
+- 개발용 계정
 - 테스트 로그인 계정
 - 테스트 채팅방
 - 테스트 메시지
 - 테스트 북마크
 - 테스트 `user_daily_dismissals`
 
-운영용 seed는 같은 데이터를 여러 번 실행해도 중복 생성되지 않도록 upsert와 seed 관계 재생성 방식으로 구성되어 있다. 다만 실제 운영 유저/채팅/북마크는 만들거나 삭제하지 않는다.
+운영용 seed는 같은 데이터를 여러 번 실행해도 기준 데이터가 중복 생성되지 않도록 upsert로 구성되어 있다. 또한 과거 seed에서 사용한 `trainer-1`~`trainer-9`, `banner-1`~`banner-5`, `devstudent` 관련 테스트 데이터는 삭제한다. 실제 운영 유저/채팅/북마크는 만들지 않는다.
 
 ### 배포 후 smoke test
 
@@ -276,14 +277,14 @@ npm run db:seed:prod
 ```bash
 curl https://YOUR_DOMAIN/api/home
 curl "https://YOUR_DOMAIN/api/trainers?district=성동구&sort=recommended"
-curl https://YOUR_DOMAIN/api/trainers/trainer-1
+curl https://YOUR_DOMAIN/api/trainers
 curl -i https://YOUR_DOMAIN/api/me
 ```
 
 브라우저에서는 아래 흐름을 확인한다.
 
-- `/home`, `/search`, `/trainers/trainer-1`은 비로그인 접근 가능
-- `/my`, `/chat`, `/chat/ego-20260623`, `/onboarding/profile`은 비로그인 시 `/login` 이동
+- `/home`, `/search`, `/trainers/{실제 트레이너 ID}`는 비로그인 접근 가능
+- `/my`, `/chat`, `/chat/{실제 채팅방 ID}`, `/onboarding/profile`은 비로그인 시 `/login` 이동
 - 로그인 후 `/my`, `/chat` 접근 가능
 - 로그아웃 후 보호 API는 401 반환
 
@@ -293,7 +294,6 @@ curl -i https://YOUR_DOMAIN/api/me
 
 ## 다음 작업
 
-- 온보딩 6단계 (수강생/강사) 폼 구현
-- 강사 mock 데이터 + 강사 상세 페이지
-- 상담 시작 + 채팅 라우트
+- 실제 운영 트레이너 등록/관리 플로우
+- 배너/공지 관리 플로우
 - 강사 대시보드 / 프로필 편집

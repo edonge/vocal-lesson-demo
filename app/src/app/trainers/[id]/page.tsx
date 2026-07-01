@@ -14,7 +14,7 @@ import {
   ThumbsUp,
 } from 'lucide-react';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { type TrainerProfileDetail } from '@/data/trainer-profile';
+import { type TrainerProfileDetail } from '@/types/ui';
 import { apiTrainerDetailToUi } from '@/lib/adapters/trainer';
 import { fetchTrainer } from '@/lib/api/trainers-client';
 import { toggleBookmark } from '@/lib/api/bookmarks-client';
@@ -275,12 +275,16 @@ function HeroSection({
 }) {
   return (
     <section className="relative h-dvh overflow-hidden bg-black text-white">
-      <img
-        src={profile.heroImage}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        draggable={false}
-      />
+      {profile.heroImage ? (
+        <img
+          src={profile.heroImage}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[#035ef3]" />
+      )}
       <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/85" />
 
       <header className="relative z-10 flex items-end justify-between px-[15px] pt-[75px]">

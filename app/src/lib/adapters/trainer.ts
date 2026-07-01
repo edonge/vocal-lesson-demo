@@ -1,12 +1,10 @@
 import type { ApiTrainerDetail, ApiTrainerPreview } from '@/types/api';
-import type { TrainerPreview } from '@/data/home';
-import type { TrainerProfileDetail } from '@/data/trainer-profile';
+import type { TrainerPreview, TrainerProfileDetail } from '@/types/ui';
 
 /**
  * API → UI 타입 어댑터.
  *
- * UI 컴포넌트(TrainerCard, 상세 페이지)는 기존 mock data 모양에 맞춰져 있다.
- * API 응답을 동일 UI 타입으로 정규화해서, 컴포넌트가 raw API 필드에
+ * API 응답을 UI 타입으로 정규화해서, 컴포넌트가 raw API 필드에
  * 직접 의존하지 않도록 한다.
  */
 

@@ -1,5 +1,5 @@
 import type { ApiTrainerDetail, ApiTrainerPreview } from '@/types/api';
-import { apiFetch } from './client';
+import { apiFetch, withAbort } from './client';
 
 export type TrainerSortOption = 'recommended' | 'price' | 'reviews' | 'career';
 
@@ -20,6 +20,9 @@ export type TrainerSearchResponse = {
   total: number;
   items: ApiTrainerPreview[];
 };
+
+const inFlightTrainerSearch = new Map<string, Promise<TrainerSearchResponse>>();
+const inFlightTrainerDetail = new Map<string, Promise<ApiTrainerDetail>>();
 
 /**
  * Filter state → URLSearchParams.
@@ -44,19 +47,43 @@ export function fetchTrainers(
   q: TrainerSearchQuery = {},
   signal?: AbortSignal
 ): Promise<TrainerSearchResponse> {
-  return apiFetch<TrainerSearchResponse>('/api/trainers', {
-    cache: 'no-store',
-    searchParams: buildSearchParams(q),
-    signal,
-  });
+  const searchParams = buildSearchParams(q);
+  const key = searchParams.toString();
+  const request =
+    inFlightTrainerSearch.get(key) ??
+    apiFetch<TrainerSearchResponse>('/api/trainers', {
+      cache: 'no-store',
+      searchParams,
+    }).finally(() => {
+      inFlightTrainerSearch.delete(key);
+    });
+  inFlightTrainerSearch.set(key, request);
+  return withAbort(request, signal);
 }
 
 export function fetchTrainer(
   id: string,
   signal?: AbortSignal
 ): Promise<ApiTrainerDetail> {
-  return apiFetch<ApiTrainerDetail>(`/api/trainers/${encodeURIComponent(id)}`, {
+  const key = encodeURIComponent(id);
+  const request =
+    inFlightTrainerDetail.get(key) ??
+    apiFetch<ApiTrainerDetail>(`/api/trainers/${key}`, {
+      cache: 'no-store',
+    }).finally(() => {
+      inFlightTrainerDetail.delete(key);
+    });
+  inFlightTrainerDetail.set(key, request);
+  return withAbort(request, signal);
+}
+
+export function prefetchTrainer(id: string): void {
+  const key = encodeURIComponent(id);
+  if (inFlightTrainerDetail.has(key)) return;
+  const request = apiFetch<ApiTrainerDetail>(`/api/trainers/${key}`, {
     cache: 'no-store',
-    signal,
+  }).finally(() => {
+    inFlightTrainerDetail.delete(key);
   });
+  inFlightTrainerDetail.set(key, request);
 }

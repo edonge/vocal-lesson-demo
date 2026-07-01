@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Settings } from 'lucide-react';
 import { BottomTabBar } from '@/components/home/home-components';
 import { UnavailableDialog } from '@/components/ui/unavailable-dialog';
-import { type ChatPreview } from '@/data/chat';
+import { type ChatPreview } from '@/types/ui';
 import { fetchChatRooms } from '@/lib/api/chat-client';
 import { apiChatRoomPreviewToUi } from '@/lib/adapters/chat';
 import { useRequireAuth } from '@/hooks/use-require-auth';

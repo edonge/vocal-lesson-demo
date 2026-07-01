@@ -17,7 +17,7 @@ export type ApiTrainerPreview = {
   career: string;
   reviews: number;
   price: string;
-  image: string;
+  image: string | null;
   bookmarked: boolean;
 };
 
@@ -36,7 +36,7 @@ export type ApiTrainerDetail = {
   name: string;
   genres: string[];
   locationText: string;
-  heroImage: string;
+  heroImage: string | null;
   headline: string[];
   careerLabel: string;
   recommendedFor: string[];

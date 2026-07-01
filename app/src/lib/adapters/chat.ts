@@ -1,5 +1,5 @@
 import type { ApiChatRoomPreview } from '@/types/api';
-import type { ChatPreview } from '@/data/chat';
+import type { ChatPreview } from '@/types/ui';
 
 /**
  * `2026.06.23.` 형식의 날짜 라벨. lastMessageAt 이 null 이면 빈 문자열.

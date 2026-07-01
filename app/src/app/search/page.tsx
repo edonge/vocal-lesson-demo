@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Award,
-  Car,
   Check,
   ChevronDown,
   Heart,
@@ -60,16 +59,6 @@ const defaultFilterState: FilterState = {
   careerMin: 0,
   careerMax: 30,
 };
-
-const sampleFilters: SearchFilter[] = [
-  { id: 'district', label: '성동구', Icon: MapPin },
-  { id: 'genre', label: '발라드', Icon: Music },
-  { id: 'goal', label: '취미', Icon: Heart },
-  { id: 'studio', label: '연습실 O', Icon: Home },
-  { id: 'parking', label: '주차 가능', Icon: Car },
-  { id: 'price', label: '30만+', Icon: Tag },
-  { id: 'career', label: '3년 +', Icon: Award },
-];
 
 /** FilterState → API query. 기본값과 같으면 전송하지 않는다. */
 function buildTrainerQuery(
@@ -337,8 +326,6 @@ function FilterSummary({
   filters: SearchFilter[];
   onEdit: () => void;
 }) {
-  const displayFilters = filters.length > 0 ? filters : sampleFilters.slice(0, 0);
-
   return (
     <div className="rounded-lg bg-[#035ef3] px-[15px] py-2.5 text-white">
       <div className="flex items-center justify-between">
@@ -361,9 +348,9 @@ function FilterSummary({
         </button>
       </div>
 
-      {displayFilters.length > 0 ? (
+      {filters.length > 0 ? (
         <div className="-mx-1 mt-2.5 flex gap-6 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {displayFilters.map(({ id, label, Icon }) => (
+          {filters.map(({ id, label, Icon }) => (
             <div
               key={id}
               className="flex shrink-0 flex-col items-center justify-center gap-1 text-center"

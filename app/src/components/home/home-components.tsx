@@ -16,11 +16,10 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { type TrainerPreview } from '@/data/home';
+import { type TrainerPreview } from '@/types/ui';
 import { toggleBookmark } from '@/lib/api/bookmarks-client';
-
-const PROFILE_MODAL_ASSET =
-  'https://www.figma.com/api/mcp/asset/71eaeda5-bd20-4abb-8299-0200507171b9';
+import { prefetchTrainer } from '@/lib/api/trainers-client';
+import musicNoteAsset from '../../../assets/music_note.png';
 
 type HomeHeaderProps = {
   onUnavailable: () => void;
@@ -205,6 +204,10 @@ export function TrainerCard({ trainer }: TrainerCardProps) {
   };
 
   const openProfile = () => router.push(`/trainers/${trainer.id}`);
+  const prefetchProfile = () => {
+    router.prefetch(`/trainers/${trainer.id}`);
+    prefetchTrainer(trainer.id);
+  };
 
   return (
     <article
@@ -214,15 +217,24 @@ export function TrainerCard({ trainer }: TrainerCardProps) {
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') openProfile();
       }}
+      onPointerEnter={prefetchProfile}
+      onPointerDown={prefetchProfile}
+      onFocus={prefetchProfile}
       className="flex h-[188px] w-full cursor-pointer overflow-hidden rounded-lg border border-[#b3b1b1] bg-gray-50 text-left"
     >
       <div className="h-full w-[130px] shrink-0 overflow-hidden">
-        <img
-          src={trainer.image}
-          alt=""
-          className="h-full w-full object-cover"
-          draggable={false}
-        />
+        {trainer.image ? (
+          <img
+            src={trainer.image}
+            alt=""
+            className="h-full w-full object-cover"
+            draggable={false}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[#035ef3] text-3xl font-bold text-white">
+            {trainer.name.slice(0, 1)}
+          </div>
+        )}
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-between px-[15px]">
         <div className="flex flex-1 flex-col justify-between pb-2.5 pt-[15px]">
@@ -290,6 +302,13 @@ const tabs = [
 
 export function BottomTabBar({ active = 'home', onUnavailable }: BottomTabBarProps) {
   const router = useRouter();
+
+  useEffect(() => {
+    router.prefetch('/home');
+    router.prefetch('/search');
+    router.prefetch('/chat');
+    router.prefetch('/my');
+  }, [router]);
 
   return (
     <nav className="fixed bottom-[14px] left-1/2 z-20 w-full max-w-phone -translate-x-1/2 px-[7px]">
@@ -368,7 +387,7 @@ export function ProfileCompletionModal({
         </button>
 
         <img
-          src={PROFILE_MODAL_ASSET}
+          src={musicNoteAsset.src}
           alt=""
           className="h-[137px] w-[137px] object-cover"
           draggable={false}

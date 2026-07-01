@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Home, UserRound } from 'lucide-react';
 import { DoreLogo } from '@/components/brand/dore-logo';
@@ -27,6 +27,10 @@ export default function SignupPage() {
   const router = useRouter();
   const [unavailableOpen, setUnavailableOpen] = useState(false);
   const setRole = useOnboardingStore((state) => state.setRole);
+
+  useEffect(() => {
+    router.prefetch('/onboarding');
+  }, [router]);
 
   const startStudentSignup = () => {
     setRole('student');

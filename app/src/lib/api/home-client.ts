@@ -1,6 +1,13 @@
 import type { ApiHomeResponse } from '@/types/api';
-import { apiFetch } from './client';
+import { apiFetch, withAbort } from './client';
+
+let inFlightHome: Promise<ApiHomeResponse> | null = null;
 
 export function fetchHome(signal?: AbortSignal): Promise<ApiHomeResponse> {
-  return apiFetch<ApiHomeResponse>('/api/home', { cache: 'no-store', signal });
+  inFlightHome ??= apiFetch<ApiHomeResponse>('/api/home', {
+    cache: 'no-store',
+  }).finally(() => {
+    inFlightHome = null;
+  });
+  return withAbort(inFlightHome, signal);
 }

@@ -34,9 +34,6 @@ type TrainerDetailRow = Prisma.TrainerProfileGetPayload<{
   include: typeof trainerDetailInclude;
 }>;
 
-const fallbackImage =
-  'https://www.figma.com/api/mcp/asset/5a3eefe1-4408-4be7-8622-866af9258907';
-
 export function toTrainerPreview(
   trainer: TrainerPreviewRow,
   currentUserId?: string
@@ -56,7 +53,7 @@ export function toTrainerPreview(
     career: formatCareer(trainer.careerYears),
     reviews: trainer.reviewCount,
     price: formatMonthlyPrice(trainer.priceMonthly),
-    image: trainer.cardImageUrl ?? trainer.heroImageUrl ?? fallbackImage,
+    image: trainer.cardImageUrl ?? trainer.heroImageUrl,
     bookmarked: currentUserId
       ? trainer.bookmarks.some((bookmark) => bookmark.userId === currentUserId)
       : false,
@@ -89,7 +86,7 @@ export function toTrainerDetail(
     name: trainer.displayName,
     genres,
     locationText: trainer.locationText ?? trainer.district?.name ?? '서울',
-    heroImage: trainer.heroImageUrl ?? fallbackImage,
+    heroImage: trainer.heroImageUrl,
     headline: trainer.headline?.split('\n').filter(Boolean) ?? [],
     careerLabel: `레슨 경력 ${trainer.careerYears}년+`,
     recommendedFor: trainer.recommendedFor.map((item) => item.body),
