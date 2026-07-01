@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChevronRight, Home, UserRound } from 'lucide-react';
 import { DoreLogo } from '@/components/brand/dore-logo';
 import { cn } from '@/lib/cn';
@@ -12,22 +12,26 @@ const roleCards = [
   {
     title: '수강생',
     description: '원하는 트레이너 한 눈에 찾기',
-    href: '/onboarding',
     disabled: false,
     Icon: UserRound,
   },
   {
     title: '트레이너',
     description: '수강생 모집/관리하기',
-    href: '#',
     disabled: true,
     Icon: Home,
   },
 ];
 
 export default function SignupPage() {
+  const router = useRouter();
   const [unavailableOpen, setUnavailableOpen] = useState(false);
   const setRole = useOnboardingStore((state) => state.setRole);
+
+  const startStudentSignup = () => {
+    setRole('student');
+    router.push('/onboarding');
+  };
 
   return (
     <>
@@ -49,7 +53,7 @@ export default function SignupPage() {
           </div>
 
           <div className="flex w-full flex-col gap-7">
-            {roleCards.map(({ title, description, href, disabled, Icon }) => {
+            {roleCards.map(({ title, description, disabled, Icon }) => {
               const content = (
                 <div
                   className={cn(
@@ -80,14 +84,15 @@ export default function SignupPage() {
                   {content}
                 </button>
               ) : (
-                <Link
+                <button
                   key={title}
-                  href={href}
-                  onClick={() => setRole('student')}
+                  type="button"
+                  onClick={startStudentSignup}
                   aria-label={`${title}으로 시작하기`}
+                  className="text-left"
                 >
                   {content}
-                </Link>
+                </button>
               );
             })}
           </div>
