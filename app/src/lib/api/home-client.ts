@@ -1,13 +1,15 @@
 import type { ApiHomeResponse } from '@/types/api';
-import { apiFetch, withAbort } from './client';
+import { apiFetch } from './client';
+import { cachedFetch } from './cache';
 
-let inFlightHome: Promise<ApiHomeResponse> | null = null;
+const HOME_KEY = 'GET /api/home';
+const HOME_TTL_MS = 30_000;
 
 export function fetchHome(signal?: AbortSignal): Promise<ApiHomeResponse> {
-  inFlightHome ??= apiFetch<ApiHomeResponse>('/api/home', {
-    cache: 'no-store',
-  }).finally(() => {
-    inFlightHome = null;
-  });
-  return withAbort(inFlightHome, signal);
+  return cachedFetch(
+    HOME_KEY,
+    HOME_TTL_MS,
+    () => apiFetch<ApiHomeResponse>('/api/home', { cache: 'no-store' }),
+    signal
+  );
 }

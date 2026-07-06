@@ -2,36 +2,57 @@ import type { Prisma } from '@prisma/client';
 import type { ApiTrainerDetail, ApiTrainerPreview } from '@/types/api';
 import { daysAgoLabel, formatCareer, formatMonthlyPrice } from '@/lib/api/format';
 
-export const trainerPreviewInclude = {
-  district: true,
-  neighborhood: true,
-  genres: { include: { genre: true } },
-  tags: { include: { tag: true } },
-  bookmarks: true,
-} satisfies Prisma.TrainerProfileInclude;
+/**
+ * `bookmarks: true` 는 트레이너당 모든 사용자의 bookmark 행을 전부 로드하므로 매우 무겁다.
+ * 현재 유저의 bookmark 존재 여부만 확인하면 되니, `where: { userId }` 로 좁혀 최대 1행만 가져온다.
+ * 비로그인 유저면 매칭될 수 없는 sentinel 로 필터해서 결과가 항상 빈 배열.
+ */
+function bookmarkedInclude(userId?: string) {
+  return {
+    where: userId ? { userId } : { userId: '__no_user__' },
+    select: { userId: true },
+    take: 1,
+  } satisfies Prisma.TrainerProfile$bookmarksArgs;
+}
 
-export const trainerDetailInclude = {
-  district: true,
-  neighborhood: true,
-  genres: { include: { genre: true } },
-  goals: { include: { goal: true } },
-  tags: { include: { tag: true } },
-  facilities: { include: { facility: true } },
-  recommendedFor: { orderBy: { sortOrder: 'asc' } },
-  educations: { orderBy: { sortOrder: 'asc' } },
-  careers: { orderBy: { sortOrder: 'asc' } },
-  works: { orderBy: { sortOrder: 'asc' } },
-  media: { orderBy: { sortOrder: 'asc' } },
-  reviews: { orderBy: { createdAt: 'desc' } },
-  bookmarks: true,
-} satisfies Prisma.TrainerProfileInclude;
+export function makeTrainerPreviewInclude(userId?: string) {
+  return {
+    district: true,
+    neighborhood: true,
+    genres: { include: { genre: true } },
+    tags: { include: { tag: true } },
+    bookmarks: bookmarkedInclude(userId),
+  } satisfies Prisma.TrainerProfileInclude;
+}
+
+export function makeTrainerDetailInclude(userId?: string) {
+  return {
+    district: true,
+    neighborhood: true,
+    genres: { include: { genre: true } },
+    goals: { include: { goal: true } },
+    tags: { include: { tag: true } },
+    facilities: { include: { facility: true } },
+    recommendedFor: { orderBy: { sortOrder: 'asc' } },
+    educations: { orderBy: { sortOrder: 'asc' } },
+    careers: { orderBy: { sortOrder: 'asc' } },
+    works: { orderBy: { sortOrder: 'asc' } },
+    media: { orderBy: { sortOrder: 'asc' } },
+    reviews: { orderBy: { createdAt: 'desc' } },
+    bookmarks: bookmarkedInclude(userId),
+  } satisfies Prisma.TrainerProfileInclude;
+}
+
+/** 하위 호환용. 새 코드는 make* 함수를 사용해서 userId 를 넘긴다. */
+export const trainerPreviewInclude = makeTrainerPreviewInclude();
+export const trainerDetailInclude = makeTrainerDetailInclude();
 
 type TrainerPreviewRow = Prisma.TrainerProfileGetPayload<{
-  include: typeof trainerPreviewInclude;
+  include: ReturnType<typeof makeTrainerPreviewInclude>;
 }>;
 
 type TrainerDetailRow = Prisma.TrainerProfileGetPayload<{
-  include: typeof trainerDetailInclude;
+  include: ReturnType<typeof makeTrainerDetailInclude>;
 }>;
 
 export function toTrainerPreview(
@@ -54,9 +75,8 @@ export function toTrainerPreview(
     reviews: trainer.reviewCount,
     price: formatMonthlyPrice(trainer.priceMonthly),
     image: trainer.cardImageUrl ?? trainer.heroImageUrl,
-    bookmarked: currentUserId
-      ? trainer.bookmarks.some((bookmark) => bookmark.userId === currentUserId)
-      : false,
+    // include 에서 이미 userId 로 필터링 → length > 0 이면 북마크됨.
+    bookmarked: currentUserId ? trainer.bookmarks.length > 0 : false,
   };
 }
 
@@ -136,8 +156,6 @@ export function toTrainerDetail(
       dislikes: review.dislikesCount,
       createdAt: review.createdAt.toISOString().slice(0, 10),
     })),
-    bookmarked: currentUserId
-      ? trainer.bookmarks.some((bookmark) => bookmark.userId === currentUserId)
-      : false,
+    bookmarked: currentUserId ? trainer.bookmarks.length > 0 : false,
   };
 }

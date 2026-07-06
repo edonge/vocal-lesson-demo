@@ -64,11 +64,19 @@ const config: Config = {
         danger: '#ef4444',
       },
       fontFamily: {
+        display: [
+          'Plus Jakarta Sans',
+          'Pretendard',
+          'Apple SD Gothic Neo',
+          'Noto Sans KR',
+          'sans-serif',
+        ],
         sans: [
+          'Plus Jakarta Sans',
+          'Pretendard',
+          'SF Pro Text',
           '-apple-system',
           'BlinkMacSystemFont',
-          'SF Pro Text',
-          'Pretendard',
           'Apple SD Gothic Neo',
           'Noto Sans KR',
           'Segoe UI',

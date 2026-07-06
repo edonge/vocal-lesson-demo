@@ -2,26 +2,29 @@ import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/getCurrentUser';
 import { chatRoomPreviewInclude, toChatRoomPreview } from '@/lib/api/chat';
 import { jsonError, jsonUnauthorized } from '@/lib/api/request';
+import { withServerTiming } from '@/lib/api/timing';
 import { prisma } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
-  if (!user) return jsonUnauthorized();
-  const { searchParams } = new URL(request.url);
-  const filter = searchParams.get('filter');
+  return withServerTiming('chat-rooms', async () => {
+    const user = await getCurrentUser();
+    if (!user) return jsonUnauthorized();
+    const { searchParams } = new URL(request.url);
+    const filter = searchParams.get('filter');
 
-  const rooms = await prisma.chatRoom.findMany({
-    where: {
-      studentId: user.id,
-      ...(filter === 'unread' ? { studentUnreadCount: { gt: 0 } } : {}),
-    },
-    include: chatRoomPreviewInclude,
-    orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
+    const rooms = await prisma.chatRoom.findMany({
+      where: {
+        studentId: user.id,
+        ...(filter === 'unread' ? { studentUnreadCount: { gt: 0 } } : {}),
+      },
+      include: chatRoomPreviewInclude,
+      orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
+    });
+
+    return NextResponse.json({ items: rooms.map(toChatRoomPreview) });
   });
-
-  return NextResponse.json({ items: rooms.map(toChatRoomPreview) });
 }
 
 export async function POST(request: Request) {

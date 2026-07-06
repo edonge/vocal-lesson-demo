@@ -30,6 +30,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
  * - 한글 query는 호출부에서 URLSearchParams 로 전달해야 함 (encode 보장)
  * - 응답이 2xx 아니면 ApiError throw
  */
+const DEV = process.env.NODE_ENV !== 'production';
+
 export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T> {
   const { searchParams, body, headers, ...rest } = init ?? {};
   const query = searchParams ? `?${searchParams.toString()}` : '';
@@ -37,6 +39,7 @@ export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T>
 
   const isJsonBody = body !== undefined && body !== null && !(body instanceof FormData) && typeof body === 'object';
 
+  const start = DEV ? performance.now() : 0;
   const res = await fetch(url, {
     ...rest,
     credentials: rest.credentials ?? 'same-origin',
@@ -47,6 +50,19 @@ export async function apiFetch<T>(path: string, init?: ApiFetchInit): Promise<T>
     },
     body: isJsonBody ? JSON.stringify(body) : (body as BodyInit | null | undefined),
   });
+
+  if (DEV) {
+    const method = rest.method ?? 'GET';
+    // 서버가 X-Server-Time 을 붙여주면 서버 처리시간도 로그. 없으면 total 만.
+    const serverMs = res.headers.get('X-Server-Time');
+    const totalMs = Math.round(performance.now() - start);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[fetch] ${method} ${path}${query} total=${totalMs}ms${
+        serverMs ? ` server=${serverMs}ms` : ''
+      } status=${res.status}`
+    );
+  }
 
   if (!res.ok) {
     let errBody: unknown;

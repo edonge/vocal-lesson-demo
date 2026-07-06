@@ -1,5 +1,6 @@
 import type { ApiTrainerDetail, ApiTrainerPreview } from '@/types/api';
-import { apiFetch, withAbort } from './client';
+import { apiFetch } from './client';
+import { cachedFetch } from './cache';
 
 export type TrainerSortOption = 'recommended' | 'price' | 'reviews' | 'career';
 
@@ -21,8 +22,8 @@ export type TrainerSearchResponse = {
   items: ApiTrainerPreview[];
 };
 
-const inFlightTrainerSearch = new Map<string, Promise<TrainerSearchResponse>>();
-const inFlightTrainerDetail = new Map<string, Promise<ApiTrainerDetail>>();
+const TRAINERS_LIST_TTL_MS = 30_000;
+const TRAINER_DETAIL_TTL_MS = 5 * 60_000;
 
 /**
  * Filter state → URLSearchParams.
@@ -47,43 +48,40 @@ export function fetchTrainers(
   q: TrainerSearchQuery = {},
   signal?: AbortSignal
 ): Promise<TrainerSearchResponse> {
-  const searchParams = buildSearchParams(q);
-  const key = searchParams.toString();
-  const request =
-    inFlightTrainerSearch.get(key) ??
-    apiFetch<TrainerSearchResponse>('/api/trainers', {
-      cache: 'no-store',
-      searchParams,
-    }).finally(() => {
-      inFlightTrainerSearch.delete(key);
-    });
-  inFlightTrainerSearch.set(key, request);
-  return withAbort(request, signal);
+  const params = buildSearchParams(q);
+  const key = `GET /api/trainers?${params.toString()}`;
+  return cachedFetch(
+    key,
+    TRAINERS_LIST_TTL_MS,
+    () =>
+      apiFetch<TrainerSearchResponse>('/api/trainers', {
+        cache: 'no-store',
+        searchParams: params,
+      }),
+    signal
+  );
 }
 
 export function fetchTrainer(
   id: string,
   signal?: AbortSignal
 ): Promise<ApiTrainerDetail> {
-  const key = encodeURIComponent(id);
-  const request =
-    inFlightTrainerDetail.get(key) ??
-    apiFetch<ApiTrainerDetail>(`/api/trainers/${key}`, {
-      cache: 'no-store',
-    }).finally(() => {
-      inFlightTrainerDetail.delete(key);
-    });
-  inFlightTrainerDetail.set(key, request);
-  return withAbort(request, signal);
+  const key = `GET /api/trainers/${id}`;
+  return cachedFetch(
+    key,
+    TRAINER_DETAIL_TTL_MS,
+    () =>
+      apiFetch<ApiTrainerDetail>(`/api/trainers/${encodeURIComponent(id)}`, {
+        cache: 'no-store',
+      }),
+    signal
+  );
 }
 
+/**
+ * 카드 hover/focus 시 상세 데이터를 백그라운드로 warming.
+ * 결과를 기다리지 않고 에러도 삼킨다 — 캐시가 실패해도 실제 진입 시 재요청되면 그만.
+ */
 export function prefetchTrainer(id: string): void {
-  const key = encodeURIComponent(id);
-  if (inFlightTrainerDetail.has(key)) return;
-  const request = apiFetch<ApiTrainerDetail>(`/api/trainers/${key}`, {
-    cache: 'no-store',
-  }).finally(() => {
-    inFlightTrainerDetail.delete(key);
-  });
-  inFlightTrainerDetail.set(key, request);
+  fetchTrainer(id).catch(() => {});
 }

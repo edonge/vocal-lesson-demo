@@ -9,6 +9,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  /* 랜딩의 full-bleed 섹션(100vw)이 가로 스크롤을 만들지 않도록. clip은
+     scroll container를 만들지 않아 sticky 헤더 동작에 영향을 주지 않는다. */
+  html {
+    overflow-x: clip;
+  }
   body {
     @apply font-sans;
   }
@@ -21,6 +26,18 @@
 }
 
 @layer components {
+  .scroll-reveal {
+    animation: scroll-reveal 0.8s ease both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 28%;
+  }
+  .float-card {
+    animation: float-card 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 34%;
+    will-change: transform, opacity, filter;
+  }
+
   /* 모바일 앱처럼 보이는 화면 컨테이너 */
   .app-shell {
     @apply mx-auto flex min-h-dvh w-full max-w-phone flex-col bg-white shadow-card;
@@ -43,5 +60,52 @@
   }
   .range-thumb::-moz-range-thumb {
     @apply pointer-events-auto h-6 w-6 rounded-full border-[3px] border-white bg-[#035ef3] shadow-[0_2px_8px_rgba(3,94,243,0.45)];
+  }
+}
+
+@keyframes scroll-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes float-card {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(52px) scale(0.96);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (hover: hover) {
+  .float-card {
+    transition:
+      transform 220ms ease,
+      box-shadow 220ms ease;
+  }
+  .float-card:hover {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .float-card {
+    animation: none;
+    filter: none;
   }
 }

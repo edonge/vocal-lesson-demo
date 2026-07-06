@@ -273,6 +273,11 @@ model TrainerProfile {
   @@index([isPublished, sortOrder])
   @@index([priceMonthly])
   @@index([careerYears])
+  // 홈/검색 지역 필터: `district = X AND is_published = true` 조합에 최적화
+  @@index([districtId, isPublished])
+  @@index([neighborhoodId])
+  // 후기 많은 순 정렬용
+  @@index([reviewCount])
   @@map("trainer_profiles")
 }
 
